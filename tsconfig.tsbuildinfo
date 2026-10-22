@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/store.ts","./src/components/hardware3d.tsx","./src/components/simulator.tsx","./src/content/lessons.ts","./src/simulators/engines.test.ts","./src/simulators/engines.ts","./vite.config.ts"],"version":"5.8.3"}
