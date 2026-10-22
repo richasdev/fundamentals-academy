@@ -32,6 +32,14 @@ Animação de transição usa Anime.js e é desativada por `prefers-reduced-moti
 
 Os modelos não emulam uma CPU comercial, um alocador de produção ou uma pilha de rede completa. As limitações ficam disponíveis dentro de cada aula. Fontes não foram republicadas: apenas links, conceitos e explicações originais. Revisão inicial em 22/10/2026. O progresso é pessoal ao navegador; a exportação serve como cópia portátil. Qualquer laboratório pode ser acessado diretamente por `/#cpu`, `/#memory` e `/#network`.
 
+## Modelos 3D
+
+Geometrias detalhadas incluem pinos, trilhas de PCB, contatos, chips, indicadores, teclado, portas, baias de disco e ventilação. Veja [as convenções e limitações dos modelos](docs/models-3d.md).
+
+Site público: https://fundamentals-lab-academy.uemurinha.chatgpt.site
+
+Repositório: https://github.com/richasdev/fundamentals-academy
+
 ## Publicação estática
 
 `npm run build` gera `dist/`, que pode ser servido por qualquer host estático público, sem login ou serviço de aplicação. A identidade de hospedagem Sites está em `.openai/hosting.json`.

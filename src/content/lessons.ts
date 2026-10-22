@@ -19,7 +19,7 @@ export const lessons = {
     explanation:
       "LOAD coloca 5 no acumulador; ADD soma 3; STORE grava 8 no endereço 10.",
     limitations:
-      "ISA educacional de acumulador de 8 bits. Instruções e dados são mostrados separadamente. Cada microetapa conta como um ciclo didático, sem representar ciclos de uma CPU comercial. Sem caches, interrupções ou pipeline.",
+      "ISA educacional de acumulador de 8 bits. Instruções e dados são mostrados separadamente. Cada microetapa conta como um ciclo didático, sem representar ciclos de uma CPU comercial. Sem caches, interrupções ou pipeline. Registradores e controle aparecem separados na vista explodida, mas pertencem ao interior do processador real. Geometria e dimensões são esquemáticas.",
     sources: [
       [
         "Nand2Tetris — arquitetura de computadores",
@@ -47,7 +47,7 @@ export const lessons = {
     explanation:
       "A stack é LIFO. POP remove o último valor inserido, 8, e preserva o 4.",
     limitations:
-      "Espaço de 32 bytes, heap crescente e stack decrescente no mesmo intervalo. PUSH ocupa um byte; malloc reserva blocos de 1 a 8 bytes. Sem alinhamento, metadados, paginação ou tradução virtual. free libera o último bloco reservado; malloc reutiliza lacunas por first-fit.",
+      "Espaço de 32 bytes, heap crescente e stack decrescente no mesmo intervalo. PUSH ocupa um byte; malloc reserva blocos de 1 a 8 bytes. Sem alinhamento, metadados, paginação ou tradução virtual. free libera o último bloco reservado; malloc reutiliza lacunas por first-fit. Cada módulo 3D representa um byte didático, não um pente de RAM real; a altura distingue usos, e os indicadores de bits mostram valores conhecidos da stack.",
     sources: [
       [
         "OSTEP — virtualização e gerenciamento de memória",
@@ -74,7 +74,7 @@ export const lessons = {
     explanation:
       "Um endereço ainda válido no cache evita consultar o resolvedor. Isso não garante que já exista uma conexão TCP.",
     limitations:
-      "HTTP sem TLS, conexão TCP nova, um servidor, DNS simplificado em consulta/resposta e sem recursão. Latência é por trecho unidirecional; processamento fixo de 20 ms. Uma perda opcional e timeout fixo de 1 s. Sem congestionamento, pacotes reais ou tráfego externo. Não modela HTTP/2 nem HTTP/3.",
+      "HTTP sem TLS, conexão TCP nova, um servidor, DNS simplificado em consulta/resposta e sem recursão. Latência é por trecho unidirecional; processamento fixo de 20 ms. Uma perda opcional e timeout fixo de 1 s. Sem congestionamento, pacotes reais ou tráfego externo. Não modela HTTP/2 nem HTTP/3. O equipamento DNS representa um serviço lógico, sem exigir hardware dedicado. A bancada e seus cabos não representam uma topologia física real.",
     sources: [
       [
         "RFC 9110 — semântica HTTP",
