@@ -4,6 +4,7 @@ import App from "./App";
 import "./styles.css";
 import "./dev-theme.css";
 import "./tracks.css";
+import "./learning.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

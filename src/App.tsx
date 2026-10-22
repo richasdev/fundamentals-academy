@@ -1,3 +1,4 @@
+import { sessionDuration } from "./content/sessionDuration";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
 import {
@@ -25,7 +26,6 @@ import {
 } from "lucide-react";
 import DetailedChapter from "./components/DetailedChapter";
 import { levels, levelInfo, trackInfo } from "./content/curriculum";
-import DevIntro from "./components/DevIntro";
 import Simulator from "./components/Simulator";
 import {
   lessons,
@@ -179,6 +179,7 @@ export default function App() {
   const isLab = (labIds as readonly string[]).includes(page);
   const id: LabId = isLab ? (page as LabId) : "cpu";
   const lesson = lessons[id];
+  const duration = sessionDuration(id);
   const exportProgress = () => {
     const url = URL.createObjectURL(
       new Blob([JSON.stringify({ version: 1, completed }, null, 2)], {
@@ -237,10 +238,10 @@ export default function App() {
               <Terminal size={27} strokeWidth={1.7} />
             </span>
             <span>
-              fundamentals<small>COMPUTER SCIENCE, EXPLAINED.</small>
+              fundamentals<small>CIÊNCIA DA COMPUTAÇÃO</small>
             </span>
           </a>
-          <div className="workspace-label">UM MUSEU PARA MEXER EM TUDO</div>
+
           <nav aria-label="Navegação principal">
             <button
               className={page === "map" ? "selected" : ""}
@@ -383,14 +384,6 @@ export default function App() {
                 </div>
               )}
             </div>
-            <a
-              className="source-link"
-              href="https://www.nand2tetris.org/course"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Aprenda por dentro <ArrowUpRight size={14} />
-            </a>
             <button
               className="theme-toggle"
               aria-label={
@@ -403,22 +396,6 @@ export default function App() {
             </button>
           </header>
           <main id="main" ref={contentRef}>
-            <DevIntro
-              context={isLab ? "lab" : page === "map" ? "map" : "glossary"}
-              onExplore={() => {
-                if (!isLab) navigate("cpu");
-                requestAnimationFrame(() =>
-                  document.getElementById("lab-workbench")?.scrollIntoView({
-                    behavior: window.matchMedia(
-                      "(prefers-reduced-motion: reduce)",
-                    ).matches
-                      ? "instant"
-                      : "smooth",
-                    block: "start",
-                  }),
-                );
-              }}
-            />
             {isLab ? (
               <>
                 <div
@@ -477,9 +454,6 @@ export default function App() {
                       </Fragment>
                     );
                   })}
-                  <span className="lab-navigation-note">
-                    CONCEITOS REAIS. EXPERIÊNCIAS INTERATIVAS.
-                  </span>
                 </div>
                 <div className="lesson-header">
                   <div>
@@ -492,7 +466,7 @@ export default function App() {
                   </div>
                   <span className="difficulty">
                     <i /> {levelInfo[trackInfo[id].level].label} <span>·</span>{" "}
-                    3 aulas + laboratório + desafio
+                    {duration.min}–{duration.max} min · leitura e laboratório
                   </span>
                 </div>
                 <section
@@ -530,12 +504,22 @@ export default function App() {
                         programação ou hardware.
                       </p>
                     )}
-                    <p className="curriculum-note">
-                      A ordem é recomendada. Todas as aulas e bancadas continuam
-                      abertas; o desafio registra a conclusão da trilha.
-                    </p>
                   </div>
                 </section>
+                <details className="session-plan">
+                  <summary>
+                    Plano de estudo · {duration.min}–{duration.max} min
+                    estimados
+                  </summary>
+                  <p>
+                    Leitura completa: {duration.reading[0]}–
+                    {duration.reading[1]} min (
+                    {duration.wordCount.toLocaleString("pt-BR")} palavras).
+                    Investigações: 21–27 min. Reflexão: 3–6 min. Síntese: 5–7
+                    min. O ritmo é livre; a estimativa inclui previsões,
+                    execução, comparação e registro.
+                  </p>
+                </details>
                 <div className="lesson-tabs">
                   <button
                     className={tab === "explore" ? "active" : ""}
@@ -587,6 +571,7 @@ export default function App() {
                       key={`${id}-${chapter}`}
                       id={id}
                       chapter={chapter}
+                      onExplore={() => setTab("explore")}
                     />
                     <div className="chapter-actions">
                       <button
@@ -664,37 +649,6 @@ export default function App() {
                     </div>
                   </section>
                 )}
-                <div className="below-lab">
-                  <div className="insight">
-                    <span className="insight-symbol">↳</span>
-                    <div>
-                      <span className="section-label">
-                        O QUE ESTÁ ACONTECENDO?
-                      </span>
-                      <h3>{lesson.question}</h3>
-                      <p>{lesson.concept}</p>
-                      <button
-                        className="text-button"
-                        onClick={() => setTab("understand")}
-                      >
-                        Entenda o mecanismo <ArrowRight size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="next-experiment">
-                    <span className="section-label">
-                      PENSE. TESTE. DESCUBRA.
-                    </span>
-                    <h3>E se você mudasse as regras?</h3>
-                    <p>{lesson.challenge}</p>
-                    <button
-                      className="text-button"
-                      onClick={() => setTab("challenge")}
-                    >
-                      Aceitar o desafio <ArrowUpRight size={14} />
-                    </button>
-                  </div>
-                </div>
                 <details className="references">
                   <summary>
                     Referências, modelo e revisão técnica{" "}
@@ -731,16 +685,9 @@ export default function App() {
             ) : page === "map" ? (
               <>
                 <div className="map-intro">
-                  <span className="section-label">
-                    09 TRILHAS · 27 AULAS · 09 LABORATÓRIOS
-                  </span>
-                  <h2>
-                    Construa a base. Conecte as camadas. Projete o sistema.
-                  </h2>
+                  <h1>Ciência da computação</h1>
                   <p>
-                    Uma progressão em três níveis, com objetivos, pré-requisitos
-                    e exercícios resolvidos. Siga a ordem sugerida ou abra
-                    qualquer trilha para revisar.
+                    9 trilhas · 27 aulas · leitura, experimentos e exercícios
                   </p>
                 </div>
                 <nav className="level-path" aria-label="Níveis de aprendizado">
@@ -802,8 +749,8 @@ export default function App() {
                                 </span>
                                 <h2>{modules[i]}</h2>
                                 <p>
-                                  {labNames[lab]} · 3 aulas + laboratório +
-                                  desafio
+                                  {labNames[lab]} · {sessionDuration(lab).min}–
+                                  {sessionDuration(lab).max} min
                                 </p>
                                 <p className="map-prerequisites">
                                   {trackInfo[lab].prerequisites.length
@@ -860,13 +807,13 @@ export default function App() {
               </button>
             </div>
             <footer>
-              <span>
-                <span className="footer-brand">&gt;_</span> Computação não é
-                magia. É um sistema que você pode entender.
-              </span>
-              <span>
-                Feito para explorar. Aberto para todos. <Globe2 size={13} />
-              </span>
+              <a
+                href="https://github.com/richasdev/fundamentals-academy"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Código-fonte
+              </a>
             </footer>
           </main>
         </div>

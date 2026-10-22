@@ -13,7 +13,8 @@ export type PartKind =
   | "screen"
   | "dns"
   | "server"
-  | "packet";
+  | "packet"
+  | "drive";
 function Boxes({
   positions,
   size,
@@ -169,6 +170,74 @@ export default function ModelDetails({
 }) {
   const [w, h, d] = size;
   const top = h / 2 + 0.012;
+  if (kind === "drive")
+    return (
+      <group>
+        <mesh position={[0, top, 0]}>
+          <boxGeometry args={[w * 0.96, 0.06, d * 0.96]} />
+          <PhysicalSurface kind="metal" color="#65737b" />
+        </mesh>
+        {[-1, 1].flatMap((x) =>
+          [-1, 1].map((z) => (
+            <Bolt
+              key={`${x}${z}`}
+              position={[x * w * 0.4, top + 0.045, z * d * 0.4]}
+            />
+          )),
+        )}
+        {[0, 0.075, 0.15].map((y) => (
+          <group key={y} position={[-w * 0.12, top + 0.07 + y, 0]}>
+            <mesh>
+              <cylinderGeometry args={[d * 0.34, d * 0.34, 0.022, 48]} />
+              <PhysicalSurface kind="metal" color="#bcc9d2" />
+            </mesh>
+            {[0.14, 0.24, 0.31].map((r) => (
+              <mesh
+                key={r}
+                rotation={[-Math.PI / 2, 0, 0]}
+                position={[0, 0.014, 0]}
+              >
+                <torusGeometry args={[d * r, 0.003, 4, 48]} />
+                <meshStandardMaterial
+                  color="#789098"
+                  metalness={0.85}
+                  roughness={0.25}
+                />
+              </mesh>
+            ))}
+          </group>
+        ))}
+        <mesh position={[-w * 0.12, top + 0.18, 0]}>
+          <cylinderGeometry args={[0.085, 0.085, 0.29, 20]} />
+          <PhysicalSurface kind="metal" color="#b09b6c" />
+        </mesh>
+        <group
+          position={[w * 0.25, top + 0.25, d * 0.23]}
+          rotation={[0, 0.8, 0]}
+        >
+          <mesh>
+            <cylinderGeometry args={[0.075, 0.075, 0.06, 16]} />
+            <PhysicalSurface kind="metal" color="#a5aeb5" />
+          </mesh>
+          <mesh position={[-w * 0.23, 0.02, 0]}>
+            <boxGeometry args={[w * 0.48, 0.035, 0.065]} />
+            <PhysicalSurface kind="metal" color="#d4b778" />
+          </mesh>
+          <mesh position={[-w * 0.46, 0.015, 0]}>
+            <boxGeometry args={[0.08, 0.025, 0.1]} />
+            <meshStandardMaterial color="#21262a" />
+          </mesh>
+        </group>
+        <Boxes
+          positions={Array.from(
+            { length: 8 },
+            (_, i) => [(i - 3.5) * w * 0.07, -h * 0.2, d * 0.52] as Vec,
+          )}
+          size={[w * 0.035, 0.05, 0.09]}
+          color="#c8ad67"
+        />
+      </group>
+    );
   if (kind === "cpu" || kind === "control")
     return (
       <group>
@@ -214,6 +283,23 @@ export default function ModelDetails({
           size={[w * 0.035, 0.07, 0.18]}
           color="#b9a977"
         />
+        <Boxes
+          positions={Array.from(
+            { length: 12 },
+            (_, i) =>
+              [
+                ((i % 6) - 2.5) * w * 0.13,
+                top + 0.045,
+                (i < 6 ? -1 : 1) * d * 0.4,
+              ] as Vec,
+          )}
+          size={[w * 0.04, 0.04, d * 0.04]}
+          color="#d7c295"
+        />
+        <mesh position={[-w * 0.32, top + 0.045, -d * 0.32]}>
+          <sphereGeometry args={[Math.min(w, d) * 0.028, 8, 6]} />
+          <meshStandardMaterial color="#d2d8da" />
+        </mesh>
         {kind === "cpu" && (
           <Boxes
             positions={Array.from({ length: 9 }, (_, i) => [
@@ -399,6 +485,37 @@ export default function ModelDetails({
               <meshStandardMaterial color={i % 2 ? "#78c985" : "#c6a66d"} />
             </mesh>
           </group>
+        ))}
+        {[-1, 1].flatMap((x) =>
+          [-1, 1].map((z) => (
+            <mesh
+              key={`${x}${z}`}
+              position={[x * w * 0.38, -h / 2 - 0.04, z * d * 0.36]}
+            >
+              <cylinderGeometry args={[0.075, 0.09, 0.08, 12]} />
+              <meshStandardMaterial color="#202528" roughness={0.85} />
+            </mesh>
+          )),
+        )}
+        <Boxes
+          positions={[-0.22, 0, 0.22].map(
+            (x) => [x, h * 0.38, d / 2 + 0.04] as Vec,
+          )}
+          size={[0.15, 0.09, 0.06]}
+          color="#10191c"
+        />
+        <Boxes
+          positions={[-0.22, 0, 0.22].map(
+            (x) => [x, h * 0.39, d / 2 + 0.075] as Vec,
+          )}
+          size={[0.1, 0.012, 0.015]}
+          color="#c2b889"
+        />
+        {[-1, 1].map((x) => (
+          <mesh key={x} position={[x * w * 0.47, 0, d / 2 + 0.025]}>
+            <boxGeometry args={[0.06, h * 0.94, 0.08]} />
+            <PhysicalSurface kind="metal" color="#838f98" />
+          </mesh>
         ))}
         <Fan position={[0, top + 0.03, 0]} radius={0.38} />
         {[0.12, 0.2, 0.28, 0.36].map((r) => (

@@ -12,7 +12,7 @@ import { BoardDetails } from "./ModelDetails";
 import DataFlow from "./DataFlow";
 import type { WorkshopNode, WorkshopStep } from "../simulators/workshops";
 import { useAppearance } from "../theme";
-function Camera() {
+function Camera({ resetKey }: { resetKey: number }) {
   const { camera, size, invalidate } = useThree();
   useEffect(() => {
     const k = size.width / size.height < 1.15 ? 1.5 : 1;
@@ -20,28 +20,8 @@ function Camera() {
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
     invalidate();
-  }, [camera, size.width, size.height, invalidate]);
+  }, [camera, size.width, size.height, invalidate, resetKey]);
   return null;
-}
-function Storage({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={[position[0], 0.33, position[2]]}>
-      {[0, 0.11, 0.22].map((y) => (
-        <mesh key={y} position={[0, y, 0]} castShadow>
-          <cylinderGeometry args={[0.56, 0.56, 0.045, 48]} />
-          <PhysicalSurface kind="metal" color="#b9c5c8" />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.14, 0]}>
-        <cylinderGeometry args={[0.12, 0.12, 0.38, 24]} />
-        <PhysicalSurface kind="metal" color="#746b50" />
-      </mesh>
-      <mesh position={[0.35, 0.28, 0.2]} rotation={[0, -0.6, 0]}>
-        <boxGeometry args={[0.65, 0.04, 0.08]} />
-        <PhysicalSurface kind="metal" color="#d1b878" />
-      </mesh>
-    </group>
-  );
 }
 export default function Workshop3D({
   nodes,
@@ -51,6 +31,7 @@ export default function Workshop3D({
   replay,
   onArrival,
   arrived,
+  focus = [],
 }: {
   nodes: WorkshopNode[];
   step: WorkshopStep;
@@ -59,6 +40,7 @@ export default function Workshop3D({
   replay: string;
   onArrival: () => void;
   arrived: boolean;
+  focus?: string[];
 }) {
   const { theme } = useAppearance();
   const [rotation, setRotation] = useState(0),
@@ -91,19 +73,14 @@ export default function Workshop3D({
   const flowSignature = JSON.stringify(flow);
   return (
     <div className="three-scene workshop-scene">
-      <div className="scene-caption">
-        <span>BANCADA EXPERIMENTAL / 3D</span>
-        <strong>Observe cada transformação.</strong>
-      </div>
       <SceneBoundary>
         <Canvas
-          key={cameraKey}
           frameloop="demand"
           dpr={[1, 1.5]}
           shadows
           camera={{ position: [5, 6, 9], fov: 42 }}
         >
-          <Camera />
+          <Camera resetKey={cameraKey} />
           <color
             attach="background"
             args={[theme === "dark" ? "#171b19" : "#f5f5f3"]}
@@ -144,7 +121,7 @@ export default function Workshop3D({
                         ? [1.6, 0.5, 1.4]
                         : [1.5, 0.22, 1]
                   }
-                  modelKind={n.kind === "storage" ? "control" : n.kind}
+                  modelKind={n.kind === "storage" ? "drive" : n.kind}
                   label={n.label}
                   sub={(step.values[n.id] || "—").slice(0, 22)}
                   color={
@@ -155,10 +132,11 @@ export default function Workshop3D({
                   receiving={
                     arrived && !step.flow?.lost && step.flow?.receiver === n.id
                   }
+                  focused={focus.includes(n.id)}
                   selected={selected === n.id}
                   onSelect={() => setSelected(n.id)}
                 />
-                {n.kind === "storage" && <Storage position={n.position} />}
+
                 {i > 0 && (
                   <Line
                     points={[
@@ -195,6 +173,7 @@ export default function Workshop3D({
             position={[0, -0.58, 0]}
           />
           <OrbitControls
+            key={cameraKey}
             makeDefault
             enableDamping={false}
             minDistance={4}
@@ -205,8 +184,7 @@ export default function Workshop3D({
         </Canvas>
       </SceneBoundary>
       <div className="scene-inspector" aria-live="polite">
-        {nodes.find((n) => n.id === selected)?.detail ||
-          "Arraste para orbitar, use zoom e clique em uma peça para inspecionar."}
+        {nodes.find((n) => n.id === selected)?.detail || ""}
       </div>
       <div className="scene-tools">
         <select

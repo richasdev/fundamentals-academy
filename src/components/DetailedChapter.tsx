@@ -1,3 +1,4 @@
+import StudyNotebook from "./StudyNotebook";
 import GuidedExplanation from "./GuidedExplanation";
 import { teachingGuides } from "../content/teachingGuides";
 import type { LabId } from "../content/lessons";
@@ -5,9 +6,11 @@ import { chapterDetails } from "../content/chapterDetails";
 export default function DetailedChapter({
   id,
   chapter,
+  onExplore,
 }: {
   id: LabId;
   chapter: number;
+  onExplore?: () => void;
 }) {
   const detail = chapterDetails[id][chapter];
   return (
@@ -19,6 +22,8 @@ export default function DetailedChapter({
       <GuidedExplanation
         key={`${id}-${chapter}`}
         guide={teachingGuides[id][chapter]}
+        id={id}
+        chapter={chapter}
       />
       <details className="technical-depth">
         <summary>Quero aprofundar: {detail.heading}</summary>
@@ -65,6 +70,12 @@ export default function DetailedChapter({
           <p>{detail.solution}</p>
         </details>
       </section>
+      <StudyNotebook
+        key={`${id}-${chapter}`}
+        id={id}
+        chapter={chapter}
+        onExplore={onExplore}
+      />
       <aside className="lab-observation">
         <h4>O que observar no laboratório</h4>
         <p>{detail.observation}</p>

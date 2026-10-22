@@ -6,6 +6,7 @@ import {
   RoundedBox,
   Environment,
   Lightformer,
+  Edges,
 } from "@react-three/drei";
 import { CanvasTexture, SRGBColorSpace } from "three";
 import type {
@@ -96,6 +97,7 @@ export function Part({
   onSelect,
   selected = false,
   receiving = false,
+  focused = false,
   modelKind,
 }: {
   position: Vec;
@@ -106,6 +108,7 @@ export function Part({
   onSelect: () => void;
   selected?: boolean;
   receiving?: boolean;
+  focused?: boolean;
   modelKind?: PartKind;
 }) {
   const [hover, setHover] = useState(false);
@@ -135,19 +138,6 @@ export function Part({
       position={position}
       rotation={kind === "screen" ? [-0.12, 0, 0] : [0, 0, 0]}
     >
-      {receiving && (
-        <mesh scale={size.map((v) => v + 0.12) as Vec}>
-          <boxGeometry />
-          <meshBasicMaterial
-            color="#49dec5"
-            wireframe
-            toneMapped={false}
-            depthTest={false}
-            transparent
-            opacity={0.95}
-          />
-        </mesh>
-      )}
       <group
         onClick={(e) => {
           e.stopPropagation();
@@ -169,7 +159,7 @@ export function Part({
         >
           <PhysicalSurface
             kind={
-              ["laptop", "server"].includes(kind)
+              ["laptop", "server", "drive"].includes(kind)
                 ? "metal"
                 : ["ram", "byte", "register", "control"].includes(kind)
                   ? "pcb"
@@ -186,7 +176,7 @@ export function Part({
                       ? "#acacac"
                       : kind === "screen"
                         ? "#282828"
-                        : kind === "server"
+                        : kind === "server" || kind === "drive"
                           ? "#484848"
                           : kind === "dns"
                             ? "#393939"
@@ -194,9 +184,25 @@ export function Part({
                               ? "#254f3e"
                               : color
             }
-            emissiveIntensity={receiving ? 0.55 : 0.07}
-            emissive={receiving ? "#49dec5" : selected ? "#746c43" : "#000000"}
+            emissiveIntensity={receiving ? 0.4 : focused ? 0.25 : 0.07}
+            emissive={
+              receiving
+                ? "#49dec5"
+                : focused
+                  ? "#3e87ce"
+                  : selected
+                    ? "#746c43"
+                    : "#000000"
+            }
           />
+          {(receiving || focused) && (
+            <Edges
+              scale={1.035}
+              threshold={18}
+              color={receiving ? "#49dec5" : "#79b7f1"}
+              lineWidth={2}
+            />
+          )}
         </RoundedBox>
         <ModelDetails kind={kind} size={size} value={Number(sub) || 0} />
       </group>
@@ -204,7 +210,7 @@ export function Part({
         <Label
           label={label}
           sub={sub}
-          selected={selected || receiving}
+          selected={selected || receiving || focused}
           height={size[1]}
         />
       )}
@@ -219,7 +225,7 @@ function StaticShadows({ revision }: { revision: string }) {
   }, [gl, revision, invalidate]);
   return null;
 }
-function FitCamera() {
+function FitCamera({ resetKey }: { resetKey: number }) {
   const { camera, size, invalidate } = useThree();
   useEffect(() => {
     const factor = size.width / size.height < 1.1 ? 1.55 : 1;
@@ -227,7 +233,7 @@ function FitCamera() {
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
     invalidate();
-  }, [camera, size.width, size.height, invalidate]);
+  }, [camera, size.width, size.height, invalidate, resetKey]);
   return null;
 }
 export default function Hardware3D(props: Props) {
@@ -288,22 +294,8 @@ export default function Hardware3D(props: Props) {
           });
   return (
     <div className={`three-scene scene-${props.kind}`}>
-      <div className="scene-caption">
-        <span>
-          OBJETO DE ESTUDO /{" "}
-          {props.kind === "cpu" ? "01" : props.kind === "memory" ? "02" : "03"}
-        </span>
-        <strong>
-          {props.kind === "cpu"
-            ? "Uma máquina, por dentro."
-            : props.kind === "memory"
-              ? "Cada byte tem um lugar."
-              : "Uma conversa entre máquinas."}
-        </strong>
-      </div>
       <SceneBoundary>
         <Canvas
-          key={cameraKey}
           frameloop="demand"
           shadows
           onCreated={({ gl }) => {
@@ -317,7 +309,7 @@ export default function Hardware3D(props: Props) {
             fov: 42,
           }}
         >
-          <FitCamera />
+          <FitCamera resetKey={cameraKey} />
           <StaticShadows revision={`${rotation}-${spread}-${flow?.id ?? 0}`} />
           <color
             attach="background"
@@ -689,6 +681,7 @@ export default function Hardware3D(props: Props) {
             position={[0, -0.58, 0]}
           />
           <OrbitControls
+            key={cameraKey}
             enablePan
             minDistance={5}
             maxDistance={18}

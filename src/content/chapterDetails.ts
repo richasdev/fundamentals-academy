@@ -336,7 +336,7 @@ export const chapterDetails: Record<
       "Confundir uma transação com ausência de toda anomalia concorrente, ou confundir replicação com backup recuperável.",
       "Uma transferência debita a primeira conta e falha antes do crédito. Por que envolver as duas alterações na mesma transação?",
       "Para que uma falha não deixe apenas metade da operação confirmada. A aplicação precisa tratar o erro e encerrar a transação corretamente. Isolamento e restrições também precisam proteger as regras sob concorrência.",
-      "A bancada demonstra custo de leitura. Consulte as fontes de isolamento e WAL para aprofundar a parte transacional que ela não simula.",
+      "A cena acompanha uma transferência lógica até COMMIT; a bancada livre demonstra custo de leitura. O desenho não reproduz MVCC ou recuperação de falhas: consulte as fontes de isolamento e WAL para aprofundar essas garantias.",
     ),
   ],
   compiler: [
