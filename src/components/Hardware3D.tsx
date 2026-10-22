@@ -561,7 +561,6 @@ export default function Hardware3D(props: Props) {
               })()}
             {props.kind === "network" &&
               (() => {
-                const n = s as NetworkState;
                 const x = 3.1 * gap;
                 return (
                   <>
@@ -629,36 +628,7 @@ export default function Hardware3D(props: Props) {
                       color="#939393"
                       lineWidth={2}
                     />
-                    {n.stage > 0 && (
-                      <Part
-                        position={
-                          n.stage === 1
-                            ? [0, 0.8, -1.2 * gap]
-                            : [
-                                n.stage === 2 || n.stage === 4 || n.stage === 7
-                                  ? -x
-                                  : x,
-                                0.7,
-                                0.5,
-                              ]
-                        }
-                        size={[0.38, 0.35, 0.55]}
-                        color={n.retried ? "#cf8f73" : "#dcc28d"}
-                        label={
-                          [
-                            "",
-                            "DNS",
-                            "DNS",
-                            "SYN",
-                            "SYN-ACK",
-                            "GET /",
-                            "HTTP",
-                            "200 OK",
-                          ][n.stage]
-                        }
-                        onSelect={() => choose(n.log)}
-                      />
-                    )}
+
                   </>
                 );
               })()}
