@@ -3091,3 +3091,7 @@ footer {
     display: none;
   }
 }
+
+.flow-delivery { padding: 10px 12px; border-left: 3px solid currentColor; background: var(--bg); font: 500 12px/1.6 monospace; overflow-wrap: anywhere; }
+.flow-delivery.received { color: var(--text); border-color: #21a58e; }
+.flow-delivery.lost { border-color: #d58750; }

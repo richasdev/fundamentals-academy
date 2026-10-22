@@ -55,6 +55,9 @@ test("fluxos identificam origem, destino e handshake sem alterar o estado ao rev
     .getByRole("button", { name: "Próximo passo", exact: true })
     .click();
   await expect(page.locator(".flow-readout")).toContainText("IR");
+  await expect(page.locator(".flow-delivery.received")).toContainText(
+    "IR recebeu: LOAD [0x08]",
+  );
   await page.getByRole("tab", { name: "Memória" }).click();
   await page.getByRole("button", { name: "PUSH 4" }).click();
   await expect(page.locator(".flow-readout")).toContainText("Memória 0x1f");
@@ -76,6 +79,9 @@ test("fluxos identificam origem, destino e handshake sem alterar o estado ao rev
   const status = await page.locator(".status-bar").textContent();
   await page.getByRole("button", { name: "Rever fluxo" }).click();
   await expect(page.locator(".status-bar")).toHaveText(status || "");
+  await expect(page.locator(".flow-delivery.received")).toContainText(
+    "Cliente recebeu: SYN-ACK",
+  );
   await page
     .getByRole("button", { name: "Próximo passo", exact: true })
     .click();
@@ -131,7 +137,9 @@ test("CPU executa, desafio salva progresso e navegação funciona", async ({
   ).toBeDisabled();
   await page.getByRole("button", { name: "Desafio 1" }).click();
   await page.getByRole("button", { name: "8", exact: true }).click();
-  await expect(page.locator('.reading-panel [role="status"]')).toContainText("Correto!");
+  await expect(page.locator('.reading-panel [role="status"]')).toContainText(
+    "Correto!",
+  );
   await page.reload();
   await expect
     .poll(() =>
@@ -176,4 +184,33 @@ test("busca, glossário e retorno de estado", async ({ page }) => {
     .getByRole("button", { name: "Voltar um passo", exact: true })
     .click();
   await expect(page.locator(".status-bar")).toContainText("Pronto.");
+});
+
+test("entrega visual só confirma na chegada e não confirma um SYN perdido", async ({
+  page,
+}) => {
+  await page.goto("/#network");
+  await page.getByLabel("DNS em cache").check();
+  await page.getByLabel("Velocidade", { exact: true }).selectOption("0.5");
+  await page
+    .getByRole("button", { name: "Próximo passo", exact: true })
+    .click();
+  await expect(page.locator(".flow-delivery.transit")).toContainText(
+    "Cliente → Servidor",
+  );
+  await expect(page.locator(".flow-delivery.received")).toContainText(
+    "Servidor recebeu: SYN · seq=100",
+    { timeout: 20000 },
+  );
+  await page.getByRole("button", { name: "Rever fluxo" }).click();
+  await expect(page.locator(".flow-delivery.transit")).toBeVisible();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByLabel("Perder o primeiro SYN").check();
+  await page
+    .getByRole("button", { name: "Próximo passo", exact: true })
+    .click();
+  await expect(page.locator(".flow-delivery.lost")).toContainText(
+    "nenhum componente recebeu",
+  );
+  await expect(page.locator(".flow-delivery.received")).toHaveCount(0);
 });

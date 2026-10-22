@@ -95,6 +95,7 @@ function Part({
   sub,
   onSelect,
   selected = false,
+  receiving = false,
 }: {
   position: Vec;
   size: Vec;
@@ -103,6 +104,7 @@ function Part({
   sub?: string;
   onSelect: () => void;
   selected?: boolean;
+  receiving?: boolean;
 }) {
   const [hover, setHover] = useState(false);
   const kind: PartKind =
@@ -130,6 +132,19 @@ function Part({
       position={position}
       rotation={kind === "screen" ? [-0.12, 0, 0] : [0, 0, 0]}
     >
+      {receiving && (
+        <mesh scale={size.map((v) => v + 0.12) as Vec}>
+          <boxGeometry />
+          <meshBasicMaterial
+            color="#49dec5"
+            wireframe
+            toneMapped={false}
+            depthTest={false}
+            transparent
+            opacity={0.95}
+          />
+        </mesh>
+      )}
       <group
         onClick={(e) => {
           e.stopPropagation();
@@ -176,13 +191,19 @@ function Part({
                               ? "#254f3e"
                               : color
             }
-            emissive={selected ? "#746c43" : "#000000"}
+            emissiveIntensity={receiving ? 0.55 : 0.07}
+            emissive={receiving ? "#49dec5" : selected ? "#746c43" : "#000000"}
           />
         </RoundedBox>
         <ModelDetails kind={kind} size={size} value={Number(sub) || 0} />
       </group>
       {label && (
-        <Label label={label} sub={sub} selected={selected} height={size[1]} />
+        <Label
+          label={label}
+          sub={sub}
+          selected={selected || receiving}
+          height={size[1]}
+        />
       )}
     </group>
   );
@@ -225,6 +246,11 @@ export default function Hardware3D(props: Props) {
           : networkFlow(props.state, gap),
     [props.kind, s, gap, spread],
   );
+  const [arrivalKey, setArrivalKey] = useState("");
+  const flowKey = `${props.kind}-${flow?.id}-${flow?.payload}-${replay}`;
+  const arrived = arrivalKey === flowKey;
+  const receiving = (id: string) =>
+    arrived && !flow?.lost && flow?.receiver === id;
   useEffect(() => setSelected(""), [s]);
   const inspectOptions =
     props.kind === "cpu"
@@ -337,10 +363,11 @@ export default function Hardware3D(props: Props) {
           <group rotation={[0, rotation, 0]}>
             {flow && (
               <DataFlow
-                key={replay}
+                key={flowKey}
                 event={flow}
                 speed={props.speed}
                 paused={props.paused}
+                onArrival={() => setArrivalKey(flowKey)}
               />
             )}
             <mesh position={[0, -0.5, 0]} castShadow receiveShadow>
@@ -386,6 +413,7 @@ export default function Hardware3D(props: Props) {
                       size={[2, 0.7, 2]}
                       color={stage === 2 ? "#acacac" : "#5c5c5c"}
                       label="CPU"
+                      receiving={receiving("CPU")}
                       sub={`ALU · ACC ${c.acc}`}
                       onSelect={() =>
                         choose(
@@ -419,6 +447,7 @@ export default function Hardware3D(props: Props) {
                       size={[1.65, 0.22, 1.65]}
                       color="#a7a7a7"
                       label="CONTROLE"
+                      receiving={receiving("CONTROLE")}
                       sub={
                         stage < 0
                           ? "pronto"
@@ -453,6 +482,7 @@ export default function Hardware3D(props: Props) {
                         size={[1.4, 0.35, 0.7]}
                         color="#a4a4a4"
                         label={r.label}
+                        receiving={receiving(r.label)}
                         sub={String(r.value)}
                         onSelect={() =>
                           choose(
@@ -470,6 +500,7 @@ export default function Hardware3D(props: Props) {
                           Math.floor(i / 2) * 0.45 - 1.65,
                         ]}
                         size={[0.63, 0.32, 0.32]}
+                        receiving={receiving(`ram-${i}`)}
                         color={
                           i === 8 || i === 9
                             ? "#a2a2a2"
@@ -514,6 +545,7 @@ export default function Hardware3D(props: Props) {
                 size={[1, 0.35, 0.65]}
                 color="#333333"
                 label="PROGRAMA"
+                receiving={receiving("PROGRAMA")}
                 onSelect={() =>
                   choose(
                     "Origem das operações PUSH, POP, malloc e free. O movimento representa a operação do programa, não uma conexão elétrica real.",
@@ -544,6 +576,7 @@ export default function Hardware3D(props: Props) {
                         (Math.floor(i / 8) - 1.5) * 1.05 * gap,
                       ]}
                       size={[0.68, height, 0.75]}
+                      receiving={receiving(`byte-${i}`)}
                       color={stack ? "#75658c" : block ? "#5f8c64" : "#3d5246"}
                       label={i.toString(16).padStart(2, "0")}
                       sub={stack ? String(value) : undefined}
@@ -569,6 +602,7 @@ export default function Hardware3D(props: Props) {
                       size={[1.6, 0.2, 1.2]}
                       color="#b2b2b2"
                       label="CLIENTE"
+                      receiving={receiving("CLIENTE")}
                       sub="navegador"
                       onSelect={() =>
                         choose(
@@ -592,6 +626,7 @@ export default function Hardware3D(props: Props) {
                       size={[1.3, 1, 1]}
                       color="#b7b7b7"
                       label="DNS"
+                      receiving={receiving("DNS")}
                       sub="192.0.2.53"
                       onSelect={() =>
                         choose(
@@ -604,6 +639,7 @@ export default function Hardware3D(props: Props) {
                       size={[1.5, 2, 1.3]}
                       color="#989898"
                       label="SERVIDOR"
+                      receiving={receiving("SERVIDOR")}
                       sub="192.0.2.10"
                       onSelect={() =>
                         choose(
@@ -628,7 +664,6 @@ export default function Hardware3D(props: Props) {
                       color="#939393"
                       lineWidth={2}
                     />
-
                   </>
                 );
               })()}
@@ -666,6 +701,16 @@ export default function Hardware3D(props: Props) {
             <span>{flow.source}</span> → <span>{flow.target}</span>
           </strong>
           <code>{flow.payload}</code>
+          <div
+            className={`flow-delivery ${arrived ? (flow.lost ? "lost" : "received") : "transit"}`}
+            role="status"
+          >
+            {arrived
+              ? flow.lost
+                ? "× Perdido no caminho · nenhum componente recebeu"
+                : `✓ ${flow.target} recebeu: ${flow.payload}`
+              : `● Em trânsito: ${flow.source} → ${flow.target}`}
+          </div>
           <p>{flow.explanation}</p>
           <button
             onClick={() => setReplay((r) => r + 1)}

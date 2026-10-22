@@ -11,6 +11,8 @@ describe("fluxos visuais derivados das transições reais", () => {
     const m = cpuModel();
     let s = m.step(m.initial());
     expect(cpuFlow(s)?.target).toBe("IR");
+    expect(cpuFlow(s)?.payload).toBe("LOAD [0x08]");
+    expect(cpuFlow(s)?.receiver).toBe("IR");
     s = m.step(s);
     expect(cpuFlow(s)?.source).toBe("IR");
     s = m.step(s);
@@ -31,6 +33,8 @@ describe("fluxos visuais derivados das transições reais", () => {
     expect(memoryFlow(s)?.source).toBe("Programa");
     s = memoryAction(s, "pop");
     expect(memoryFlow(s)?.target).toBe("Programa");
+    expect(memoryFlow(s)?.payload).toBe("POP 4");
+    expect(memoryFlow(s)?.receiver).toBe("PROGRAMA");
     s = memoryAction(s, "pop");
     expect(memoryFlow(s)).toBeNull();
   });
@@ -50,6 +54,7 @@ describe("fluxos visuais derivados das transições reais", () => {
     const m = networkModel(40, true, true);
     const s = m.step(m.initial());
     expect(networkFlow(s)?.lost).toBe(true);
+    expect(networkFlow(s)?.receiver).toBeUndefined();
     expect(networkFlow(s)?.target).toBe("Pacote perdido");
   });
 });

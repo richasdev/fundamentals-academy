@@ -6,6 +6,7 @@ export interface FlowEvent {
   to: Vec3;
   source: string;
   target: string;
+  receiver?: string;
   payload: string;
   explanation: string;
   via?: Vec3[];
@@ -31,7 +32,11 @@ export function cpuFlow(s: CpuState, gap = 1, spread = 0): FlowEvent | null {
       to: ir,
       source: `Instrução [${s.pc - 1}]`,
       target: "IR",
-      payload: s.ir!.op,
+      receiver: "IR",
+      payload:
+        s.ir!.op === "HALT"
+          ? "HALT"
+          : `${s.ir!.op} [0x${address.toString(16).padStart(2, "0")}]`,
       explanation:
         "Fetch: a memória de instruções entrega a operação ao registrador IR. O PC avança.",
     };
@@ -42,6 +47,7 @@ export function cpuFlow(s: CpuState, gap = 1, spread = 0): FlowEvent | null {
       to: control,
       source: "IR",
       target: "Unidade de controle",
+      receiver: "CONTROLE",
       payload: `DECODIFICAR ${s.ir!.op}`,
       explanation:
         "Decode: o opcode é interpretado e os sinais de controle são definidos.",
@@ -53,6 +59,7 @@ export function cpuFlow(s: CpuState, gap = 1, spread = 0): FlowEvent | null {
       to: ram,
       source: "ACC",
       target: `RAM[${address}]`,
+      receiver: `ram-${address}`,
       payload: String(s.acc),
       explanation: `Escrita: o byte ${s.acc} sai do acumulador e é gravado no endereço ${address}.`,
     };
@@ -63,6 +70,7 @@ export function cpuFlow(s: CpuState, gap = 1, spread = 0): FlowEvent | null {
       to: alu,
       source: "Controle",
       target: "CPU",
+      receiver: "CPU",
       payload: "HALT",
       explanation:
         "A execução termina. O resultado permanece na RAM e no acumulador.",
@@ -74,6 +82,7 @@ export function cpuFlow(s: CpuState, gap = 1, spread = 0): FlowEvent | null {
     via: [alu],
     source: `RAM[${address}]`,
     target: "ALU → ACC",
+    receiver: "ACC",
     payload: `${s.ram[address]} → ACC ${s.acc}`,
     explanation:
       s.ir?.op === "LOAD"
@@ -104,13 +113,14 @@ export function memoryFlow(s: MemoryState, gap = 1): FlowEvent | null {
     to: isPop || isFree ? source : cell,
     source: isPop || isFree ? `Memória 0x${address.toString(16)}` : "Programa",
     target: isPop || isFree ? "Programa" : `Memória 0x${address.toString(16)}`,
+    receiver: isPop || isFree ? "PROGRAMA" : `byte-${address}`,
     payload: isFree
-      ? "free · liberar bloco"
+      ? `free(0x${address.toString(16)}) · ${s.log.match(/(\d+) bytes/)?.[1]} bytes`
       : isPop
-        ? "POP · retirar valor"
+        ? `POP ${s.log.match(/valor (\d+)/)?.[1]}`
         : s.log.startsWith("PUSH")
           ? `PUSH ${s.stack.at(-1)}`
-          : "malloc · reservar bloco",
+          : `malloc(${s.blocks.find((b) => b.address === address)?.size}) · 0x${address.toString(16)}`,
     explanation:
       s.log +
       (isFree || s.log.startsWith("malloc")
@@ -141,7 +151,7 @@ export function networkFlow(s: NetworkState, gap = 1): FlowEvent | null {
       dns,
       "Cliente",
       "DNS",
-      "consulta A",
+      "A academy.example",
       "Qual é o endereço de academy.example?",
     ],
     [
@@ -195,5 +205,15 @@ export function networkFlow(s: NetworkState, gap = 1): FlowEvent | null {
   ];
   const [from, to, source, target, payload, explanation] =
     messages[s.stage - 1];
-  return { id: s.elapsed, from, to, source, target, payload, explanation };
+  return {
+    id: s.elapsed,
+    from,
+    to,
+    source,
+    target,
+    payload,
+    explanation,
+    receiver:
+      target === "Cliente" ? "CLIENTE" : target === "DNS" ? "DNS" : "SERVIDOR",
+  };
 }

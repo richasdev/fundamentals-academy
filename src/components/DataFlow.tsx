@@ -11,6 +11,7 @@ import {
   Object3D,
   QuadraticBezierCurve3,
   Vector3,
+  SRGBColorSpace,
 } from "three";
 import type { FlowEvent } from "../simulators/flows";
 import { useAppearance } from "../theme";
@@ -33,10 +34,12 @@ export default function DataFlow({
   event,
   speed = 1,
   paused = false,
+  onArrival,
 }: {
   event: FlowEvent;
   speed?: number;
   paused?: boolean;
+  onArrival: () => void;
 }) {
   const { invalidate } = useThree();
   const { theme } = useAppearance();
@@ -45,6 +48,7 @@ export default function DataFlow({
     arrival = useRef<Mesh>(null);
   const trails = useRef<(Group | null)[]>([]);
   const progress = useRef(0);
+  const delivered = useRef(false);
   const [reduced, setReduced] = useState(
     () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
@@ -54,6 +58,45 @@ export default function DataFlow({
     : theme === "dark"
       ? "#a2f5e8"
       : "#218d96";
+  const payloadTexture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 768;
+    canvas.height = 192;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#101c22f5";
+    ctx.beginPath();
+    ctx.roundRect(4, 4, 760, 184, 20);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.font = "bold 28px monospace";
+    ctx.fillText(
+      event.lost ? "PACOTE SEM ENTREGA" : "CONTEÚDO DO DADO",
+      26,
+      46,
+    );
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 36px monospace";
+    // Duas linhas preservam o conteúdo completo, inclusive seq e ack do TCP.
+    const words = event.payload.split(" ");
+    let line = "",
+      y = 99;
+    for (const word of words) {
+      const next = line ? line + " " + word : word;
+      if (ctx.measureText(next).width > 710 && line) {
+        ctx.fillText(line, 26, y);
+        y += 44;
+        line = word;
+      } else line = next;
+    }
+    ctx.fillText(line, 26, y);
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
+    return texture;
+  }, [event.payload, event.lost, color]);
+  useEffect(() => () => payloadTexture.dispose(), [payloadTexture]);
   const curve = useMemo(() => {
     const from = new Vector3(...event.from),
       to = new Vector3(...event.to);
@@ -100,6 +143,7 @@ export default function DataFlow({
   }, []);
   useEffect(() => {
     progress.current = reduced ? 1.3 : 0;
+    delivered.current = false;
     invalidate();
   }, [event, reduced, invalidate]);
   useEffect(() => invalidate(), [paused, speed, theme, invalidate]);
@@ -112,6 +156,10 @@ export default function DataFlow({
       );
     const travel = reduced ? 1 : Math.min(1, progress.current),
       eased = travel * travel * (3 - 2 * travel);
+    if (travel === 1 && !delivered.current) {
+      delivered.current = true;
+      onArrival();
+    }
     const settling = Math.max(0, (progress.current - 1) / 0.3);
     curve.getPointAt(eased, marker.current.position);
     marker.current.scale.setScalar(
@@ -180,6 +228,20 @@ export default function DataFlow({
         </group>
       ))}
       <group ref={marker}>
+        <sprite
+          position={[0, 0.7, 0]}
+          scale={[0.34, 0.085, 1]}
+          renderOrder={20}
+        >
+          <spriteMaterial
+            map={payloadTexture}
+            sizeAttenuation={false}
+            transparent
+            depthTest={false}
+            depthWrite={false}
+            toneMapped={false}
+          />
+        </sprite>
         <sprite scale={[0.75, 0.75, 1]}>
           <spriteMaterial
             map={halo}

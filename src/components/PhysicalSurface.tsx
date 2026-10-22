@@ -39,10 +39,12 @@ export default function PhysicalSurface({
   kind,
   color,
   emissive = "#000000",
+  emissiveIntensity = 0.07,
 }: {
   kind: SurfaceKind;
   color: string;
   emissive?: string;
+  emissiveIntensity?: number;
 }) {
   const texture = microSurface(kind);
   return (
@@ -70,7 +72,7 @@ export default function PhysicalSurface({
       bumpMap={texture}
       bumpScale={kind === "metal" ? 0.0015 : 0.0025}
       emissive={emissive}
-      emissiveIntensity={0.07}
+      emissiveIntensity={emissiveIntensity}
     />
   );
 }
