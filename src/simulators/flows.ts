@@ -122,7 +122,7 @@ export function networkFlow(s: NetworkState, gap = 1): FlowEvent | null {
   if (!s.elapsed) return null;
   const client: Vec3 = [-3.1 * gap, 0.65, 0.3],
     dns: Vec3 = [0, 0.7, -1.2 * gap],
-    server: Vec3 = [3.1 * gap, 1.05, 0.3];
+    server: Vec3 = [3.1 * gap, 1.05, 0.83];
   if (s.stage === 2 && s.retried)
     return {
       id: s.elapsed,

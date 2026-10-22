@@ -141,11 +141,11 @@ export default function DataFlow({
         ref={dots}
         args={[undefined, undefined, points.length]}
       >
-        <sphereGeometry args={[0.026, 6, 6]} />
+        <sphereGeometry args={[0.04, 8, 6]} />
         <meshBasicMaterial
-          color={theme === "dark" ? "#7b969a" : "#617b80"}
+          color={theme === "dark" ? "#b4d8d4" : "#345c66"}
           transparent
-          opacity={0.7}
+          opacity={0.92}
           toneMapped={false}
         />
       </instancedMesh>
