@@ -637,3 +637,206 @@
     font-size: 13px;
   }
 }
+
+/* Explicações em camadas: familiar, guiada e técnica. */
+.plain-explanation {
+  margin: 30px 0;
+}
+.plain-explanation h4 {
+  margin-top: 18px;
+}
+.analogy-boundary {
+  margin: 20px 0 28px;
+  padding: 12px 0;
+  border-block: 1px solid var(--line);
+}
+.analogy-boundary summary,
+.lesson-vocabulary summary,
+.technical-depth summary {
+  cursor: pointer;
+  font: 11px/1.8 var(--mono);
+  color: var(--dev-accent);
+}
+.analogy-boundary p {
+  margin-top: 16px;
+}
+.why-this-matters {
+  padding-left: 20px;
+  border-left: 2px solid var(--line);
+}
+.why-this-matters h4 {
+  font-size: 15px;
+}
+.guided-walkthrough {
+  margin: 35px 0;
+  padding: 25px;
+  border: 1px solid var(--line);
+  background: var(--tone-f5f5f3);
+}
+.guided-walkthrough h4 {
+  margin-top: 12px;
+}
+.guided-explanation .guided-instruction {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+.guided-step-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 20px 0;
+}
+.guided-step-nav button {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 12px 8px;
+  border: 1px solid var(--line);
+  font: 9px/1.6 var(--mono);
+  text-align: left;
+}
+.guided-step-nav button[aria-pressed="true"] {
+  border-color: var(--dev-accent);
+  color: var(--dev-accent);
+}
+.guided-step-nav span {
+  font-size: 11px;
+}
+.guided-step {
+  border-left: 3px solid var(--dev-accent);
+  padding: 14px 20px;
+  background: var(--tone-ffffff);
+  min-height: 140px;
+}
+.guided-step > span {
+  font: 9px/1.7 var(--mono);
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.guided-step > p {
+  margin-top: 12px;
+}
+.guided-step-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 18px 0;
+}
+.guided-step-actions button {
+  font: 10px/1.8 var(--mono);
+  text-align: left;
+}
+.quick-check {
+  margin: 32px 0;
+  padding: 25px 0;
+  border-block: 1px solid var(--line);
+}
+.quick-check > h4 {
+  margin-top: 14px;
+}
+.chapter-detail .quick-check > p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.quick-check-options {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0;
+}
+.quick-check-options button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  padding: 16px;
+  text-align: left;
+  font: 12px/1.7 var(--mono);
+}
+.quick-check-options button > span {
+  flex-shrink: 0;
+  width: 22px;
+  font-size: 15px;
+}
+.quick-check-options .selected-correct {
+  border-color: var(--dev-accent);
+  background: var(--tone-f5f5f3);
+}
+.quick-check-options .selected-review {
+  border-style: dashed;
+  border-color: var(--muted);
+  background: var(--tone-f5f5f3);
+}
+.quick-feedback {
+  padding: 18px;
+  border-left: 3px solid var(--dev-accent);
+  background: var(--tone-f5f5f3);
+}
+.quick-feedback.needs-review {
+  border-color: var(--muted);
+}
+.quick-feedback strong {
+  font: 500 12px var(--mono);
+}
+.quick-feedback p {
+  margin-top: 12px;
+}
+.lesson-vocabulary {
+  margin: 28px 0;
+}
+.lesson-vocabulary > p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.lesson-vocabulary > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.lesson-vocabulary details {
+  border: 1px solid var(--line);
+  padding: 14px;
+  min-width: 0;
+}
+.lesson-vocabulary details p {
+  font-size: 12px;
+  margin-top: 12px;
+}
+.technical-depth {
+  margin: 32px 0;
+  padding: 18px 0;
+  border-block: 1px solid var(--line);
+}
+.technical-depth p {
+  margin-top: 18px;
+}
+@media (max-width: 700px) {
+  .guided-walkthrough {
+    padding: 18px 14px;
+  }
+  .guided-step-nav button {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    font-size: 8px;
+    padding: 10px 8px;
+  }
+  .guided-step {
+    padding: 14px;
+    min-height: 180px;
+  }
+  .guided-step-actions {
+    gap: 14px;
+  }
+  .quick-check-options button {
+    padding: 14px 12px;
+    font-size: 11px;
+  }
+  .lesson-vocabulary > div {
+    grid-template-columns: 1fr;
+  }
+  .why-this-matters {
+    padding-left: 14px;
+  }
+}

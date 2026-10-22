@@ -60,3 +60,9 @@ Repositório: https://github.com/richasdev/fundamentals-academy
 A ordem recomendada é fundamental (lógica, CPU, memória), intermediário (SO, redes, bancos) e avançado (compiladores, infraestrutura, arquitetura). Identificadores de progresso e rotas permanecem estáveis. O mapa, o seletor de laboratórios e a próxima trilha usam essa ordem; nenhum nível bloqueia acesso.
 
 `src/content/curriculum.ts` define níveis, objetivos, pré-requisitos e critérios de avanço. `src/content/chapterDetails.ts` acrescenta às 27 aulas um objetivo, aprofundamento, exemplo de código, sequência de estados, erro comum, exercício com resolução e guia de observação. Exemplos teóricos não executados na bancada são identificados no conteúdo. `DetailedChapter.tsx` mantém os exemplos legíveis em desktop e celular; tabelas têm rolagem própria e resoluções ficam recolhidas até serem abertas. As referências de banco incluem isolamento e WAL do PostgreSQL.
+
+## Didática guiada
+
+As 27 aulas têm um guia adicional em linguagem simples: analogia cotidiana, ligação com o mecanismo real, limites da comparação, utilidade prática e três passos navegáveis. Cada aula também oferece uma checagem de duas alternativas, com explicação específica para cada escolha, e dois termos expansíveis. São 81 passos, 27 checagens e 54 definições locais. As checagens servem à prática e não registram conclusão; o desafio final continua sendo o critério de progresso.
+
+`src/content/teachingGuides.ts` contém o conteúdo original. `GuidedExplanation.tsx` controla passo e resposta apenas na aula atual, reiniciando ambos ao trocar de aula. A explicação técnica permanece acessível em uma seção expansível; exemplos, tabelas de estado, exercícios e observações da bancada foram preservados. Sem timer ou animação automática na leitura.

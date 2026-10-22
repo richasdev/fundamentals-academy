@@ -1,3 +1,5 @@
+import GuidedExplanation from "./GuidedExplanation";
+import { teachingGuides } from "../content/teachingGuides";
 import type { LabId } from "../content/lessons";
 import { chapterDetails } from "../content/chapterDetails";
 export default function DetailedChapter({
@@ -14,8 +16,14 @@ export default function DetailedChapter({
         <span>OBJETIVO DESTA AULA</span>
         <p>{detail.objective}</p>
       </div>
-      <h4>{detail.heading}</h4>
-      <p>{detail.explanation}</p>
+      <GuidedExplanation
+        key={`${id}-${chapter}`}
+        guide={teachingGuides[id][chapter]}
+      />
+      <details className="technical-depth">
+        <summary>Quero aprofundar: {detail.heading}</summary>
+        <p>{detail.explanation}</p>
+      </details>
       <div className="worked-example">
         <h4>Exemplo comentado</h4>
         <pre>
