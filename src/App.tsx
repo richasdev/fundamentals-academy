@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
 import {
   Sun,
@@ -23,6 +23,8 @@ import {
   GraduationCap,
   FlaskConical,
 } from "lucide-react";
+import DetailedChapter from "./components/DetailedChapter";
+import { levels, levelInfo, trackInfo } from "./content/curriculum";
 import DevIntro from "./components/DevIntro";
 import Simulator from "./components/Simulator";
 import {
@@ -269,21 +271,30 @@ export default function App() {
             {modules.map((m, i) => {
               const target = labIds[i];
               return (
-                <button
-                  key={m}
-                  className={isLab && page === target ? "module-active" : ""}
-                  onClick={() => navigate(target as Page)}
-                >
-                  <span className="module-number">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span>{m}</span>
-                  {isLab && page === target ? (
-                    <span className="module-indicator" />
-                  ) : completed.includes(target) ? (
-                    <Check size={13} />
-                  ) : null}
-                </button>
+                <Fragment key={m}>
+                  {(i === 0 ||
+                    trackInfo[target].level !==
+                      trackInfo[labIds[i - 1]].level) && (
+                    <div className="sidebar-level">
+                      {levelInfo[trackInfo[target].level].number} /{" "}
+                      {levelInfo[trackInfo[target].level].label}
+                    </div>
+                  )}
+                  <button
+                    className={isLab && page === target ? "module-active" : ""}
+                    onClick={() => navigate(target as Page)}
+                  >
+                    <span className="module-number">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <span>{m}</span>
+                    {isLab && page === target ? (
+                      <span className="module-indicator" />
+                    ) : completed.includes(target) ? (
+                      <Check size={13} />
+                    ) : null}
+                  </button>
+                </Fragment>
               );
             })}
           </div>
@@ -302,7 +313,7 @@ export default function App() {
                 }}
               />
             </div>
-            <p>{completed.length} de 9 trilhas concluídos</p>
+            <p>{completed.length} de 9 trilhas concluídas</p>
             <div className="progress-actions">
               <button onClick={exportProgress} title="Exportar progresso">
                 <Download size={14} /> Exportar
@@ -423,38 +434,47 @@ export default function App() {
                       Layers,
                       Terminal,
                       Network,
-                      Globe2,
                       Layers,
                       Code2,
+                      Globe2,
                       Network,
                     ][i];
                     return (
-                      <button
-                        role="tab"
-                        aria-selected={id === l}
-                        className={id === l ? "active" : ""}
-                        onClick={() => navigate(l)}
-                        key={l}
-                      >
-                        <Icon size={17} />
-                        <span>
-                          {
-                            [
-                              "Bits & lógica",
-                              "CPU & execução",
-                              "Memória",
-                              "SO & Linux",
-                              "Redes & HTTP",
-                              "Infraestrutura",
-                              "Bancos de dados",
-                              "Compiladores",
-                              "Arquitetura",
-                            ][i]
-                          }
-                        </span>
-                        <small>0{i + 1}</small>
-                        {completed.includes(l) && <Check size={13} />}
-                      </button>
+                      <Fragment key={l}>
+                        {(i === 0 ||
+                          trackInfo[l].level !==
+                            trackInfo[labIds[i - 1]].level) && (
+                          <span className="lab-level-label">
+                            {levelInfo[trackInfo[l].level].label}
+                          </span>
+                        )}
+                        <button
+                          role="tab"
+                          aria-selected={id === l}
+                          className={id === l ? "active" : ""}
+                          onClick={() => navigate(l)}
+                          key={l}
+                        >
+                          <Icon size={17} />
+                          <span>
+                            {
+                              [
+                                "Bits & lógica",
+                                "CPU & execução",
+                                "Memória",
+                                "SO & Linux",
+                                "Redes & HTTP",
+                                "Bancos de dados",
+                                "Compiladores",
+                                "Infraestrutura",
+                                "Arquitetura",
+                              ][i]
+                            }
+                          </span>
+                          <small>0{i + 1}</small>
+                          {completed.includes(l) && <Check size={13} />}
+                        </button>
+                      </Fragment>
                     );
                   })}
                   <span className="lab-navigation-note">
@@ -471,10 +491,51 @@ export default function App() {
                     <p>{lesson.description}</p>
                   </div>
                   <span className="difficulty">
-                    <i /> Fundamental <span>·</span> 3 aulas + laboratório +
-                    desafio
+                    <i /> {levelInfo[trackInfo[id].level].label} <span>·</span>{" "}
+                    3 aulas + laboratório + desafio
                   </span>
                 </div>
+                <section
+                  className="track-overview"
+                  aria-label="Plano desta trilha"
+                >
+                  <div>
+                    <span
+                      className={`level-badge level-${trackInfo[id].level}`}
+                    >
+                      {levelInfo[trackInfo[id].level].number} /{" "}
+                      {levelInfo[trackInfo[id].level].label}
+                    </span>
+                    <h3>Ao concluir esta trilha</h3>
+                    <ul>
+                      {trackInfo[id].outcomes.map((outcome) => (
+                        <li key={outcome}>{outcome}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h3>Conhecimentos recomendados</h3>
+                    {trackInfo[id].prerequisites.length ? (
+                      <div className="prerequisite-links">
+                        {trackInfo[id].prerequisites.map((pre) => (
+                          <button key={pre} onClick={() => navigate(pre)}>
+                            {completed.includes(pre) ? "✓ " : "↳ "}
+                            {modules[labIds.indexOf(pre)]}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>
+                        Comece aqui. Não é necessário conhecimento prévio de
+                        programação ou hardware.
+                      </p>
+                    )}
+                    <p className="curriculum-note">
+                      A ordem é recomendada. Todas as aulas e bancadas continuam
+                      abertas; o desafio registra a conclusão da trilha.
+                    </p>
+                  </div>
+                </section>
                 <div className="lesson-tabs">
                   <button
                     className={tab === "explore" ? "active" : ""}
@@ -522,6 +583,11 @@ export default function App() {
                     <p>
                       {[lesson.concept, lesson.deep, lesson.practical][chapter]}
                     </p>
+                    <DetailedChapter
+                      key={`${id}-${chapter}`}
+                      id={id}
+                      chapter={chapter}
+                    />
                     <div className="chapter-actions">
                       <button
                         disabled={chapter === 0}
@@ -668,39 +734,107 @@ export default function App() {
                   <span className="section-label">
                     09 TRILHAS · 27 AULAS · 09 LABORATÓRIOS
                   </span>
+                  <h2>
+                    Construa a base. Conecte as camadas. Projete o sistema.
+                  </h2>
                   <p>
-                    Comece onde sua curiosidade levar. Pré-requisitos são
-                    sugestões, e todos os laboratórios estão abertos.
+                    Uma progressão em três níveis, com objetivos, pré-requisitos
+                    e exercícios resolvidos. Siga a ordem sugerida ou abra
+                    qualquer trilha para revisar.
                   </p>
                 </div>
-                <div className="knowledge-map">
-                  {modules.map((m, i) => {
-                    const lab = labIds[i];
-                    return (
-                      <article key={m} className="available">
-                        <span className="map-number">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <div>
-                          <span className="eyebrow">
-                            {i === 0
-                              ? "COMECE PELO PRIMEIRO BIT"
-                              : `CONEXÃO SUGERIDA: TRILHA ${String(i).padStart(2, "0")}`}
-                          </span>
-                          <h2>{m}</h2>
-                          <p>
-                            {labNames[lab]} · 3 aulas + laboratório + desafio
-                          </p>
-                        </div>
+                <nav className="level-path" aria-label="Níveis de aprendizado">
+                  {levels.map((level) => (
+                    <a
+                      key={level}
+                      href={`#nivel-${level}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        document
+                          .getElementById(`nivel-${level}`)
+                          ?.scrollIntoView({
+                            behavior: "instant",
+                            block: "start",
+                          });
+                      }}
+                    >
+                      <span>{levelInfo[level].number}</span>
+                      {levelInfo[level].label}
+                      <small>
                         {
-                          <button onClick={() => navigate(lab)}>
-                            {completed.includes(lab) ? "Revisitar" : "Explorar"}{" "}
-                            <ArrowUpRight size={18} />
-                          </button>
+                          labIds.filter(
+                            (l) =>
+                              trackInfo[l].level === level &&
+                              completed.includes(l),
+                          ).length
                         }
-                      </article>
-                    );
-                  })}
+                        /3 concluídas
+                      </small>
+                    </a>
+                  ))}
+                </nav>
+                <div className="knowledge-map">
+                  {levels.map((level) => (
+                    <section
+                      key={level}
+                      id={`nivel-${level}`}
+                      className={`learning-level level-${level}`}
+                      aria-labelledby={`title-${level}`}
+                    >
+                      <header className="level-heading">
+                        <span>{levelInfo[level].number} / NÍVEL</span>
+                        <h2 id={`title-${level}`}>{levelInfo[level].label}</h2>
+                        <p>{levelInfo[level].description}</p>
+                      </header>
+                      {labIds
+                        .filter((l) => trackInfo[l].level === level)
+                        .map((lab) => {
+                          const i = labIds.indexOf(lab);
+                          return (
+                            <article key={lab} className="available">
+                              <span className="map-number">
+                                {String(i + 1).padStart(2, "0")}
+                              </span>
+                              <div>
+                                <span className="eyebrow">
+                                  {levelInfo[level].label} · TRILHA{" "}
+                                  {String(i + 1).padStart(2, "0")}
+                                </span>
+                                <h2>{modules[i]}</h2>
+                                <p>
+                                  {labNames[lab]} · 3 aulas + laboratório +
+                                  desafio
+                                </p>
+                                <p className="map-prerequisites">
+                                  {trackInfo[lab].prerequisites.length
+                                    ? `Base recomendada: ${trackInfo[lab].prerequisites.map((pre) => modules[labIds.indexOf(pre)]).join(" · ")}`
+                                    : "Ponto de partida · sem pré-requisitos"}
+                                </p>
+                                <ul className="map-outcomes">
+                                  {trackInfo[lab].outcomes.map((outcome) => (
+                                    <li key={outcome}>{outcome}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <button onClick={() => navigate(lab)}>
+                                {completed.includes(lab)
+                                  ? "Revisitar"
+                                  : "Explorar"}
+                                <ArrowUpRight size={18} />
+                              </button>
+                            </article>
+                          );
+                        })}
+                      <div className="level-readiness">
+                        <strong>
+                          {level === "advanced"
+                            ? "Ao terminar esta etapa"
+                            : "Como saber se pode avançar"}
+                        </strong>
+                        <p>{levelInfo[level].readiness}</p>
+                      </div>
+                    </section>
+                  ))}
                 </div>
               </>
             ) : (

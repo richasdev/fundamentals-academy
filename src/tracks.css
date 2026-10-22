@@ -307,3 +307,333 @@
     margin-left: 0;
   }
 }
+
+/* Progressão editorial: base, sistemas e integração. */
+.level-path {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--line);
+  margin: 25px 0 45px;
+}
+.level-path a {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px;
+  font: 500 14px/1.5 var(--mono);
+  border-right: 1px solid var(--line);
+}
+.level-path a:last-child {
+  border: 0;
+}
+.level-path a > span {
+  font-size: 10px;
+  color: var(--dev-accent);
+}
+.level-path small {
+  font: 10px var(--mono);
+  color: var(--muted);
+}
+.map-intro > h2 {
+  font:
+    500 29px/1.3 "Space Grotesk",
+    sans-serif;
+  letter-spacing: -0.7px;
+  margin-top: 18px;
+  max-width: 650px;
+}
+.learning-level {
+  scroll-margin-top: 25px;
+  margin-bottom: 55px;
+}
+.level-heading {
+  padding: 18px 0 28px;
+  border-bottom: 2px solid var(--line);
+}
+.level-heading > span {
+  font: 10px/1.6 var(--mono);
+  color: var(--dev-accent);
+}
+.knowledge-map .level-heading h2 {
+  font:
+    500 32px/1.3 "Space Grotesk",
+    sans-serif;
+  margin: 12px 0;
+}
+.knowledge-map .level-heading p {
+  max-width: 720px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.knowledge-map .map-prerequisites {
+  font: 10px/1.8 var(--mono);
+  margin-top: 13px;
+  overflow-wrap: anywhere;
+}
+.map-outcomes {
+  list-style: none;
+  padding: 0;
+  margin: 15px 0 0;
+  display: grid;
+  gap: 5px;
+  font: 11px/1.8 var(--mono);
+  color: var(--muted);
+}
+.map-outcomes li::before {
+  content: "↳ ";
+  color: var(--dev-accent);
+}
+.knowledge-map article > div {
+  min-width: 0;
+  flex: 1;
+}
+.knowledge-map article > button {
+  flex-shrink: 0;
+}
+.level-readiness {
+  padding: 20px 25px;
+  border-left: 2px solid var(--dev-accent);
+  background: var(--tone-f5f5f3);
+  margin: 8px 0 0 60px;
+}
+.level-readiness strong {
+  font: 500 11px var(--mono);
+}
+.knowledge-map .level-readiness p {
+  font-size: 12px;
+  margin-top: 9px;
+}
+.sidebar-level {
+  padding: 14px 9px 2px;
+  font: 9px/1.5 var(--mono);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lab-level-label {
+  grid-column: 1/-1;
+  margin-top: 12px;
+  font: 9px/1.7 var(--mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+.track-overview {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 30px;
+  padding: 22px 0 30px;
+  border-top: 1px solid var(--line);
+}
+.track-overview h3 {
+  font:
+    500 14px/1.6 "Space Grotesk",
+    sans-serif;
+  margin: 14px 0 12px;
+}
+.track-overview ul {
+  margin: 0;
+  padding-left: 16px;
+  font: 11px/1.9 var(--mono);
+  color: var(--muted);
+}
+.track-overview p {
+  font-size: 12px;
+  color: var(--muted);
+}
+.level-badge {
+  display: inline-block;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  font: 9px var(--mono);
+  color: var(--dev-accent);
+}
+.prerequisite-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.prerequisite-links button {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  font: 10px/1.5 var(--mono);
+  text-align: left;
+}
+.track-overview .curriculum-note {
+  font-size: 10px;
+  margin-top: 15px;
+  line-height: 1.8;
+}
+.reading-panel > p,
+.chapter-detail p {
+  font-size: 14px;
+  line-height: 1.95;
+  max-width: 78ch;
+}
+.chapter-detail {
+  margin-top: 28px;
+}
+.chapter-detail h4 {
+  font:
+    500 19px/1.5 "Space Grotesk",
+    sans-serif;
+  margin: 28px 0 12px;
+}
+.chapter-objective {
+  border-left: 3px solid var(--dev-accent);
+  padding: 14px 20px;
+  background: var(--tone-f5f5f3);
+  margin-bottom: 30px;
+}
+.chapter-objective > span {
+  font: 9px/1.6 var(--mono);
+  letter-spacing: 1.2px;
+  color: var(--muted);
+}
+.chapter-objective > p {
+  margin-top: 10px;
+}
+.worked-example {
+  margin: 26px 0;
+  padding: 18px 24px;
+  background: var(--tone-f5f5f3);
+  border: 1px solid var(--line);
+}
+.worked-example h4 {
+  font: 10px var(--mono);
+  margin: 0 0 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.worked-example pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.9 var(--mono);
+  margin: 0;
+}
+.trace-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 28px 0;
+}
+.lesson-trace {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 470px;
+}
+.lesson-trace caption {
+  font: 500 13px/1.6 var(--mono);
+  text-align: left;
+  padding: 0 0 16px;
+}
+.lesson-trace th,
+.lesson-trace td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  text-align: left;
+  font: 12px/1.8 var(--mono);
+}
+.lesson-trace thead th {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.lesson-trace tbody th {
+  font-weight: 500;
+  width: 22%;
+}
+.misconception,
+.lab-observation {
+  padding: 5px 0 18px 20px;
+  border-left: 2px solid var(--line);
+  margin: 25px 0;
+}
+.misconception h4,
+.lab-observation h4 {
+  margin-top: 8px;
+  font-size: 15px;
+}
+.misconception p,
+.lab-observation p {
+  font-size: 13px;
+}
+.chapter-exercise {
+  border-block: 1px solid var(--line);
+  padding: 25px 0;
+  margin: 30px 0;
+}
+.chapter-exercise h4 {
+  margin-top: 12px;
+}
+.chapter-exercise details {
+  margin-top: 18px;
+}
+.chapter-exercise summary {
+  font: 11px/1.7 var(--mono);
+  cursor: pointer;
+  color: var(--dev-accent);
+}
+.chapter-exercise details p {
+  padding: 18px;
+  background: var(--tone-f5f5f3);
+  margin-top: 14px;
+}
+@media (max-width: 700px) {
+  .level-path {
+    grid-template-columns: 1fr;
+    margin-bottom: 30px;
+  }
+  .level-path a {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 18px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+  }
+  .level-path small {
+    margin-left: auto;
+  }
+  .map-intro > h2 {
+    font-size: 25px;
+  }
+  .knowledge-map .level-heading h2 {
+    font-size: 29px;
+  }
+  .knowledge-map article {
+    align-items: flex-start;
+  }
+  .knowledge-map .map-outcomes {
+    display: block;
+    font-size: 10px;
+  }
+  .map-outcomes li {
+    margin: 8px 0;
+  }
+  .level-readiness {
+    margin-left: 0;
+    padding: 18px;
+  }
+  .track-overview {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .chapter-detail h4 {
+    font-size: 18px;
+  }
+  .worked-example {
+    padding: 16px;
+  }
+  .worked-example pre {
+    font-size: 11px;
+  }
+  .chapter-objective {
+    padding: 14px;
+  }
+  .reading-panel > p,
+  .chapter-detail p {
+    font-size: 13px;
+  }
+}

@@ -54,3 +54,9 @@ Repositório: https://github.com/richasdev/fundamentals-academy
 - Arquitetura: escrita com líder fixo e maioria de três, mensagens perdidas, ACKs e confirmação condicionada ao quórum. Não é uma implementação de Raft.
 
 `src/simulators/workshops.ts` contém os modelos puros. `WorkshopLab.tsx` controla snapshots, autoplay, pausa, velocidade, retorno e replay. `Workshop3D.tsx` reaproveita componentes detalhados, órbita, inspeção e fluxos com payload. Diagramas 2D e readouts DOM oferecem alternativa ao WebGL.
+
+## Progressão e aulas detalhadas
+
+A ordem recomendada é fundamental (lógica, CPU, memória), intermediário (SO, redes, bancos) e avançado (compiladores, infraestrutura, arquitetura). Identificadores de progresso e rotas permanecem estáveis. O mapa, o seletor de laboratórios e a próxima trilha usam essa ordem; nenhum nível bloqueia acesso.
+
+`src/content/curriculum.ts` define níveis, objetivos, pré-requisitos e critérios de avanço. `src/content/chapterDetails.ts` acrescenta às 27 aulas um objetivo, aprofundamento, exemplo de código, sequência de estados, erro comum, exercício com resolução e guia de observação. Exemplos teóricos não executados na bancada são identificados no conteúdo. `DetailedChapter.tsx` mantém os exemplos legíveis em desktop e celular; tabelas têm rolagem própria e resoluções ficam recolhidas até serem abertas. As referências de banco incluem isolamento e WAL do PostgreSQL.

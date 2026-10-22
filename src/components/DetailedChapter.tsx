@@ -1,0 +1,66 @@
+import type { LabId } from "../content/lessons";
+import { chapterDetails } from "../content/chapterDetails";
+export default function DetailedChapter({
+  id,
+  chapter,
+}: {
+  id: LabId;
+  chapter: number;
+}) {
+  const detail = chapterDetails[id][chapter];
+  return (
+    <div className="chapter-detail">
+      <div className="chapter-objective">
+        <span>OBJETIVO DESTA AULA</span>
+        <p>{detail.objective}</p>
+      </div>
+      <h4>{detail.heading}</h4>
+      <p>{detail.explanation}</p>
+      <div className="worked-example">
+        <h4>Exemplo comentado</h4>
+        <pre>
+          <code>{detail.code}</code>
+        </pre>
+      </div>
+      <div className="trace-scroll">
+        <table className="lesson-trace">
+          <caption>Acompanhe o raciocínio</caption>
+          <thead>
+            <tr>
+              <th>Etapa</th>
+              <th>Estado / valor</th>
+              <th>Por que isso acontece</th>
+            </tr>
+          </thead>
+          <tbody>
+            {detail.trace.map(([stage, value, reason]) => (
+              <tr key={stage}>
+                <th scope="row">{stage}</th>
+                <td>
+                  <code>{value}</code>
+                </td>
+                <td>{reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <aside className="misconception">
+        <h4>Erro comum</h4>
+        <p>{detail.mistake}</p>
+      </aside>
+      <section className="chapter-exercise" aria-label="Exercício desta aula">
+        <span className="section-label">PAUSE E FAÇA UMA PREVISÃO</span>
+        <h4>{detail.exercise}</h4>
+        <details>
+          <summary>Ver resolução comentada</summary>
+          <p>{detail.solution}</p>
+        </details>
+      </section>
+      <aside className="lab-observation">
+        <h4>O que observar no laboratório</h4>
+        <p>{detail.observation}</p>
+      </aside>
+    </div>
+  );
+}
