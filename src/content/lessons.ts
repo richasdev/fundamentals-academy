@@ -1,5 +1,83 @@
-export type LabId = "cpu" | "memory" | "network";
-export const lessons = {
+import { extraLessons } from "./tracks";
+export const labIds = [
+  "logic",
+  "cpu",
+  "memory",
+  "os",
+  "network",
+  "infra",
+  "database",
+  "compiler",
+  "architecture",
+] as const;
+export type LabId = (typeof labIds)[number];
+export type ClassicLabId = "cpu" | "memory" | "network";
+export type ExtendedLabId = Exclude<LabId, ClassicLabId>;
+export interface Lesson {
+  eyebrow: string;
+  title: string;
+  description: string;
+  question: string;
+  concept: string;
+  deep: string;
+  practical: string;
+  challenge: string;
+  quiz: string;
+  answers: string[];
+  correct: number;
+  explanation: string;
+  limitations: string;
+  sources: string[][];
+}
+export const chapterTitles: Record<LabId, string[]> = {
+  logic: [
+    "Bits e representação",
+    "Portas e tabelas-verdade",
+    "Do circuito ao programa",
+  ],
+  cpu: [
+    "Instruções e registradores",
+    "Fetch, decode, execute",
+    "Overflow e resultados",
+  ],
+  memory: [
+    "Stack e duração dos dados",
+    "Heap e first-fit",
+    "Propriedade e memória virtual",
+  ],
+  os: [
+    "Processos e estados",
+    "Escalonamento round-robin",
+    "Kernel, syscalls e isolamento",
+  ],
+  network: [
+    "Nomes, endereços e DNS",
+    "TCP e semântica HTTP",
+    "Latência e retransmissão",
+  ],
+  infra: [
+    "Da borda à aplicação",
+    "Balanceamento e cache",
+    "Disponibilidade e operação",
+  ],
+  database: [
+    "Tabelas, chaves e páginas",
+    "Índices e caminhos de busca",
+    "Transações e persistência",
+  ],
+  compiler: [
+    "Texto e tokens",
+    "Árvore, precedência e bytecode",
+    "Runtime e ferramentas",
+  ],
+  architecture: [
+    "Limites e responsabilidades",
+    "Replicação e quórum",
+    "Falhas e decisões de arquitetura",
+  ],
+};
+export const lessons: Record<LabId, Lesson> = {
+  ...extraLessons,
   cpu: {
     eyebrow: "HARDWARE E ARQUITETURA",
     title: "Como um programa ganha vida?",
