@@ -1,12 +1,13 @@
 import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Line } from "@react-three/drei";
+import { OrbitControls, Line, RoundedBox } from "@react-three/drei";
 import { CanvasTexture, SRGBColorSpace } from "three";
 import type {
   CpuState,
   MemoryState,
   NetworkState,
 } from "../simulators/engines";
+import ModelDetails, { BoardDetails, type PartKind } from "./ModelDetails";
 type Props =
   | { kind: "cpu"; state: CpuState }
   | { kind: "memory"; state: MemoryState }
@@ -92,9 +93,29 @@ function Part({
   selected?: boolean;
 }) {
   const [hover, setHover] = useState(false);
+  const kind: PartKind =
+    label === "CPU"
+      ? "cpu"
+      : label === "CONTROLE"
+        ? "control"
+        : ["PC", "IR", "ACC"].includes(label)
+          ? "register"
+          : label === "CLIENTE"
+            ? "laptop"
+            : label === "DNS" && size[0] > 1
+              ? "dns"
+              : label === "SERVIDOR"
+                ? "server"
+                : !label && size[1] > 1
+                  ? "screen"
+                  : size[0] === 0.68
+                    ? "byte"
+                    : size[0] < 0.5
+                      ? "packet"
+                      : "ram";
   return (
     <group position={position}>
-      <mesh
+      <group
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
@@ -106,15 +127,21 @@ function Part({
         onPointerOut={() => setHover(false)}
         scale={hover ? 1.035 : 1}
       >
-        <boxGeometry args={size} />
-        <meshStandardMaterial
-          color={color}
-          roughness={0.65}
-          metalness={0.25}
-          emissive={selected ? "#b6b47a" : "#000000"}
-          emissiveIntensity={0.18}
-        />
-      </mesh>
+        <RoundedBox
+          args={size}
+          radius={Math.min(0.055, size[1] * 0.12)}
+          smoothness={2}
+        >
+          <meshStandardMaterial
+            color={color}
+            roughness={0.65}
+            metalness={0.25}
+            emissive={selected ? "#b6b47a" : "#000000"}
+            emissiveIntensity={0.18}
+          />
+        </RoundedBox>
+        <ModelDetails kind={kind} size={size} value={Number(sub) || 0} />
+      </group>
       {label && (
         <Label label={label} sub={sub} selected={selected} height={size[1]} />
       )}
@@ -217,6 +244,10 @@ export default function Hardware3D(props: Props) {
               />
               <meshStandardMaterial color="#293a34" roughness={0.9} />
             </mesh>
+            <BoardDetails
+              network={props.kind === "network"}
+              memory={props.kind === "memory"}
+            />
             {props.kind === "cpu" &&
               (() => {
                 const c = s as CpuState;
