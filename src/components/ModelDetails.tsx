@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { Color, InstancedMesh, Object3D } from "three";
+import PhysicalSurface from "./PhysicalSurface";
 import { Line } from "@react-three/drei";
 type Vec = [number, number, number];
 export type PartKind =
@@ -49,11 +50,11 @@ function Bolt({ position }: { position: Vec }) {
     <group position={position}>
       <mesh>
         <cylinderGeometry args={[0.045, 0.045, 0.025, 8]} />
-        <meshStandardMaterial color="#b0aaa0" metalness={0.8} roughness={0.4} />
+        <meshStandardMaterial color="#ababab" metalness={0.8} roughness={0.4} />
       </mesh>
       <mesh position={[0, 0.017, 0]}>
         <boxGeometry args={[0.055, 0.008, 0.012]} />
-        <meshStandardMaterial color="#39403b" />
+        <meshStandardMaterial color="#3e3e3e" />
       </mesh>
     </group>
   );
@@ -63,19 +64,19 @@ function Fan({ position, radius = 0.2 }: { position: Vec; radius?: number }) {
     <group position={position} rotation={[Math.PI / 2, 0, 0]}>
       <mesh>
         <torusGeometry args={[radius, 0.025, 5, 20]} />
-        <meshStandardMaterial color="#a6aba3" metalness={0.6} roughness={0.4} />
+        <meshStandardMaterial color="#b9a977" metalness={0.6} roughness={0.4} />
       </mesh>
       {Array.from({ length: 5 }, (_, i) => (
         <group key={i} rotation={[0, 0, (i * Math.PI * 2) / 5]}>
           <mesh position={[0, radius * 0.48, 0]} rotation={[0, 0, 0.4]}>
             <boxGeometry args={[radius * 0.65, radius * 0.7, 0.025]} />
-            <meshStandardMaterial color="#303b37" />
+            <meshStandardMaterial color="#383838" />
           </mesh>
         </group>
       ))}
       <mesh>
         <cylinderGeometry args={[radius * 0.2, radius * 0.2, 0.05, 10]} />
-        <meshStandardMaterial color="#b8b4a3" />
+        <meshStandardMaterial color="#b4b4b4" />
       </mesh>
     </group>
   );
@@ -132,14 +133,14 @@ export function BoardDetails({
               <mesh>
                 <cylinderGeometry args={[0.09, 0.09, 0.24, 10]} />
                 <meshStandardMaterial
-                  color="#888f8b"
+                  color="#8d8d8d"
                   metalness={0.7}
                   roughness={0.4}
                 />
               </mesh>
               <mesh position={[0, 0.125, 0]}>
                 <cylinderGeometry args={[0.075, 0.075, 0.015, 10]} />
-                <meshStandardMaterial color="#343f3a" />
+                <meshStandardMaterial color="#3c3c3c" />
               </mesh>
             </group>
           )),
@@ -150,7 +151,7 @@ export function BoardDetails({
             [-4.8, 0.02, 1.5],
             [4.8, 0.02, 1.5],
           ]}
-          color="#b79865"
+          color="#9b9b9b"
           lineWidth={2}
         />
       )}
@@ -174,7 +175,7 @@ export default function ModelDetails({
         <mesh position={[0, top, 0]}>
           <boxGeometry args={[w * 0.85, 0.035, d * 0.85]} />
           <meshStandardMaterial
-            color="#a6aa97"
+            color="#a8a8a8"
             metalness={0.75}
             roughness={0.35}
           />
@@ -182,7 +183,7 @@ export default function ModelDetails({
         <mesh position={[0, top + 0.03, 0]}>
           <boxGeometry args={[w * 0.62, 0.04, d * 0.62]} />
           <meshStandardMaterial
-            color="#344e45"
+            color="#484848"
             metalness={0.6}
             roughness={0.25}
           />
@@ -194,7 +195,7 @@ export default function ModelDetails({
             (Math.floor(i / 5) - 1.5) * d * 0.12,
           ])}
           size={[w * 0.075, 0.018, d * 0.08]}
-          color="#68857a"
+          color="#36594d"
         />
         {[-1, 1].flatMap((x) =>
           [-1, 1].map((z) => (
@@ -221,7 +222,7 @@ export default function ModelDetails({
               0,
             ])}
             size={[0.055, 0.24, d * 0.9]}
-            color="#707c76"
+            color="#b6b6b6"
           />
         )}
       </group>
@@ -231,7 +232,7 @@ export default function ModelDetails({
       <group>
         <mesh position={[0, top, 0]}>
           <boxGeometry args={[w * 0.9, 0.025, d * 0.9]} />
-          <meshStandardMaterial color="#315544" />
+          <PhysicalSurface kind="pcb" color="#164632" />
         </mesh>
         <Boxes
           positions={Array.from({ length: kind === "byte" ? 2 : 4 }, (_, i) => [
@@ -241,7 +242,7 @@ export default function ModelDetails({
             0,
           ])}
           size={[w * (kind === "byte" ? 0.29 : 0.17), 0.075, d * 0.44]}
-          color="#1f2b29"
+          color="#282828"
         />
         <Boxes
           positions={Array.from({ length: 8 }, (_, i) => [
@@ -250,7 +251,7 @@ export default function ModelDetails({
             d * 0.38,
           ])}
           size={[w * 0.045, 0.035, d * 0.18]}
-          color="#c5b071"
+          color="#c7a64d"
         />
         {kind !== "ram" && (
           <Boxes
@@ -268,7 +269,7 @@ export default function ModelDetails({
         )}
         <mesh position={[w * 0.45, top + 0.045, -d * 0.35]}>
           <boxGeometry args={[0.035, 0.035, 0.06]} />
-          <meshStandardMaterial color="#d5d1b0" />
+          <meshStandardMaterial color="#cfcfcf" />
         </mesh>
       </group>
     );
@@ -282,21 +283,21 @@ export default function ModelDetails({
             (Math.floor(i / 12) - 1) * 0.13 - 0.18,
           ])}
           size={[0.085, 0.015, 0.09]}
-          color="#38433e"
+          color="#404040"
         />
         <mesh position={[0, top + 0.005, 0.35]}>
           <boxGeometry args={[0.5, 0.009, 0.28]} />
-          <meshStandardMaterial color="#7c8d85" />
+          <meshStandardMaterial color="#898989" />
         </mesh>
         <Boxes
           positions={[-0.5, 0, 0.5].map((x) => [x, top - 0.025, -0.52])}
           size={[0.2, 0.08, 0.08]}
-          color="#b3b6a9"
+          color="#b4b4b4"
         />
         <Boxes
           positions={[-0.3, 0, 0.3].map((z) => [-w / 2 - 0.006, 0, z])}
           size={[0.015, 0.045, 0.14]}
-          color="#25342d"
+          color="#303030"
         />
       </group>
     );
@@ -318,11 +319,11 @@ export default function ModelDetails({
             d / 2 + 0.03,
           ])}
           size={[w * 0.47, 0.018, 0.01]}
-          color="#8fb59b"
+          color="#ababab"
         />
         <mesh position={[0, h * 0.44, d / 2 + 0.025]}>
           <sphereGeometry args={[0.016, 8, 6]} />
-          <meshStandardMaterial color="#0a1410" />
+          <meshStandardMaterial color="#121212" />
         </mesh>
       </group>
     );
@@ -336,29 +337,29 @@ export default function ModelDetails({
             0,
           ])}
           size={[0.025, 0.025, d * 0.65]}
-          color="#34483b"
+          color="#434343"
         />
         {[-1, 1].map((x) => (
           <group key={x} position={[x * w * 0.42, top, d * 0.25]}>
             <mesh position={[0, 0.38, 0]}>
               <cylinderGeometry args={[0.025, 0.04, 0.76, 8]} />
-              <meshStandardMaterial color="#b6b5a3" />
+              <meshStandardMaterial color="#b4b4b4" />
             </mesh>
             <mesh>
               <sphereGeometry args={[0.065, 8, 8]} />
-              <meshStandardMaterial color="#606e5f" />
+              <meshStandardMaterial color="#6a6a6a" />
             </mesh>
           </group>
         ))}
         <Boxes
           positions={[-0.4, -0.1, 0.2].map((x) => [x, -0.18, d / 2 + 0.015])}
           size={[0.17, 0.15, 0.035]}
-          color="#263b31"
+          color="#363636"
         />
         <Boxes
           positions={[-0.4, -0.1, 0.2].map((x) => [x, -0.13, d / 2 + 0.04])}
           size={[0.1, 0.018, 0.015]}
-          color="#d3bd77"
+          color="#bdbdbd"
         />
         <Boxes
           positions={[-0.35, -0.2, -0.05, 0.1].map((x) => [
@@ -378,11 +379,11 @@ export default function ModelDetails({
           <group key={i} position={[0, (i - 2) * 0.32, d / 2 + 0.025]}>
             <mesh>
               <boxGeometry args={[w * 0.8, 0.25, 0.045]} />
-              <meshStandardMaterial color="#44554e" />
+              <meshStandardMaterial color="#272727" />
             </mesh>
             <mesh position={[w * 0.28, 0, 0.03]}>
               <boxGeometry args={[0.12, 0.09, 0.04]} />
-              <meshStandardMaterial color="#c6c1ad" metalness={0.65} />
+              <meshStandardMaterial color="#c1c1c1" metalness={0.65} />
             </mesh>
             <Boxes
               positions={Array.from({ length: 5 }, (_, j) => [
@@ -391,21 +392,35 @@ export default function ModelDetails({
                 0.028,
               ])}
               size={[0.025, 0.14, 0.008]}
-              color="#222e29"
+              color="#0c0c0c"
             />
             <mesh position={[w * 0.12, 0, 0.04]}>
               <sphereGeometry args={[0.022, 6, 6]} />
-              <meshStandardMaterial color={i % 2 ? "#b6cf90" : "#c6a66d"} />
+              <meshStandardMaterial color={i % 2 ? "#78c985" : "#c6a66d"} />
             </mesh>
           </group>
         ))}
         <Fan position={[0, top + 0.03, 0]} radius={0.38} />
+        {[0.12, 0.2, 0.28, 0.36].map((r) => (
+          <mesh
+            key={r}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, top + 0.07, 0]}
+          >
+            <torusGeometry args={[r, 0.012, 5, 32]} />
+            <meshStandardMaterial
+              color="#818181"
+              metalness={0.8}
+              roughness={0.25}
+            />
+          </mesh>
+        ))}
         <Boxes
           positions={[-1, 1].flatMap((x) =>
-            [-0.8, 0, 0.8].map((y):Vec => [x * w * 0.45, y, d / 2 + 0.07]),
+            [-0.8, 0, 0.8].map((y): Vec => [x * w * 0.45, y, d / 2 + 0.07]),
           )}
           size={[0.035, 0.035, 0.03]}
-          color="#c6c0ac"
+          color="#c0c0c0"
         />
         <Boxes
           positions={Array.from({ length: 10 }, (_, i) => [
@@ -414,7 +429,7 @@ export default function ModelDetails({
             0,
           ])}
           size={[0.015, 0.025, d * 0.65]}
-          color="#34433c"
+          color="#3f3f3f"
         />
       </group>
     );
@@ -422,12 +437,12 @@ export default function ModelDetails({
     <group>
       <mesh position={[0, top + 0.005, 0]}>
         <boxGeometry args={[w * 0.7, 0.018, d * 0.65]} />
-        <meshStandardMaterial color="#e3d8b8" />
+        <meshStandardMaterial color="#d8d8d8" />
       </mesh>
       <Boxes
         positions={[-1, 0, 1].map((i) => [i * w * 0.18, top + 0.019, 0])}
         size={[w * 0.1, 0.015, d * 0.45]}
-        color="#726f52"
+        color="#6e6e6e"
       />
     </group>
   );
