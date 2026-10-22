@@ -65,4 +65,10 @@ A ordem recomendada é fundamental (lógica, CPU, memória), intermediário (SO,
 
 As 27 aulas têm um guia adicional em linguagem simples: analogia cotidiana, ligação com o mecanismo real, limites da comparação, utilidade prática e três passos navegáveis. Cada aula também oferece uma checagem de duas alternativas, com explicação específica para cada escolha, e dois termos expansíveis. São 81 passos, 27 checagens e 54 definições locais. As checagens servem à prática e não registram conclusão; o desafio final continua sendo o critério de progresso.
 
-`src/content/teachingGuides.ts` contém o conteúdo original. `GuidedExplanation.tsx` controla passo e resposta apenas na aula atual, reiniciando ambos ao trocar de aula. A explicação técnica permanece acessível em uma seção expansível; exemplos, tabelas de estado, exercícios e observações da bancada foram preservados. Sem timer ou animação automática na leitura.
+`src/content/teachingGuides.ts` contém o conteúdo original. `GuidedExplanation.tsx` controla passo e resposta apenas na aula atual, reiniciando ambos ao trocar de aula. A explicação técnica permanece acessível em uma seção expansível; exemplos, tabelas de estado, exercícios e observações da bancada foram preservados. Sem timer de leitura.
+
+## Cenas ligadas à explicação e sessões de estudo
+
+Cada um dos 81 passos seleciona uma cena 3D correspondente, com remetente, conteúdo em trânsito e destaque do receptor após a chegada. Há pausa, replay, inspeção e alternativa em diagrama. `lessonScenes.ts` usa os motores das bancadas quando aplicável e cenas lógicas para mecanismos adicionais. As limitações continuam explícitas.
+
+As nove trilhas oferecem sessões estimadas de 42–58 minutos de leitura e laboratório, com seis investigações, anotações por aula e síntese por trilha. `studySessions.ts` reúne o aprofundamento e os protocolos; `sessionDuration.ts` calcula o tempo de leitura e soma prática e reflexão. O caderno usa armazenamento local e não conclui automaticamente a trilha. Veja [interface e movimento](docs/frontend-effects.md).

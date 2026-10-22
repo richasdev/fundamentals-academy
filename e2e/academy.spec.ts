@@ -1,31 +1,13 @@
 import { test, expect } from "@playwright/test";
-test("abertura dev permite explorar Doom, Matrix e movimento reduzido", async ({
+test("abertura apresenta as trilhas sem displays decorativos", async ({
   page,
 }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/#map");
   await expect(
-    page.getByRole("region", { name: "Experimentos visuais de programação" }),
+    page.getByRole("heading", { name: "Ciência da computação", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".retro-titlebar")).toContainText("PAUSADO");
-  await expect(page.getByRole("img", { name: /Fogo Doom:/ })).toBeVisible();
-  await page.getByRole("button", { name: "Avançar efeito visual" }).click();
-  await page.getByLabel("Calor do fogo Doom").focus();
-  await page.getByLabel("Calor do fogo Doom").press("Home");
-  await expect(page.locator(".fire-tuning output").first()).toHaveText("0%");
-  await page.getByRole("button", { name: "Matrix", exact: true }).click();
-  await expect(
-    page.getByRole("img", { name: /inspirada em Matrix/ }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Animar efeito visual" }).click();
-  await expect(
-    page.getByRole("button", { name: "Pausar efeito visual" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Pausar efeito visual" }).click();
-  await page.getByRole("button", { name: "Entrar no laboratório" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Como um programa ganha vida?" }),
-  ).toBeVisible();
+  await expect(page.locator(".retro-display, .dev-intro")).toHaveCount(0);
+  await expect(page.locator(".learning-level article")).toHaveCount(9);
   await expect(page.locator("body")).toHaveJSProperty(
     "scrollWidth",
     await page.evaluate(() => innerWidth),
