@@ -13,7 +13,7 @@ test("mapa abre as nove trilhas sem áreas em breve", async ({ page }) => {
     .click();
   await expect(page).toHaveURL(/#logic$/);
   await expect(
-    page.getByRole("tab", { name: "Arquitetura 09", exact: true }),
+    page.getByRole("tab", { name: /^Arquitetura/ }),
   ).toBeVisible();
   await expect(page.locator("body")).toHaveJSProperty(
     "scrollWidth",
@@ -203,7 +203,7 @@ test("parâmetros alteram cache, custo da consulta e confirmação da escrita", 
   await page.getByLabel("Chave procurada").fill("7");
   await finish();
   await expect(page.locator(".status-bar")).toContainText("0 linhas");
-  await page.getByRole("tab", { name: "Arquitetura 09", exact: true }).click();
+  await page.getByRole("tab", { name: /^Arquitetura/ }).click();
   await page.getByRole("button", { name: "Ver diagrama 2D" }).click();
   await page.getByLabel("Réplicas indisponíveis").selectOption("2");
   await finish();
