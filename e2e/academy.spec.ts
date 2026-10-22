@@ -94,7 +94,7 @@ test("bancadas 3D têm inspeção acessível e controles espaciais", async ({
   page.on("pageerror", (e) => errors.push(e.message));
   for (const lab of ["cpu", "memory", "network"]) {
     await page.goto("/#" + lab);
-    await expect(page.locator("canvas")).toBeVisible();
+    await expect(page.locator(".three-scene canvas")).toBeVisible();
     const inspector = page.getByLabel("Inspecionar componente 3D");
     await expect(inspector).toBeVisible();
     await inspector.selectOption({ index: 1 });
@@ -123,13 +123,13 @@ test("CPU executa, desafio salva progresso e navegação funciona", async ({
     await page
       .getByRole("button", { name: "Próximo passo", exact: true })
       .click();
-  await expect(page.getByRole("status")).toContainText("HALT");
+  await expect(page.locator(".status-bar")).toContainText("HALT");
   await expect(
     page.getByRole("button", { name: "Próximo passo", exact: true }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "Desafio 1" }).click();
   await page.getByRole("button", { name: "8", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Correto!");
+  await expect(page.locator('.reading-panel [role="status"]')).toContainText("Correto!");
   await page.reload();
   await expect
     .poll(() =>
@@ -142,9 +142,9 @@ test("CPU executa, desafio salva progresso e navegação funciona", async ({
     .toContain("cpu");
   await page.getByRole("tab", { name: "Memória" }).click();
   await page.getByRole("button", { name: "malloc(4)" }).click();
-  await expect(page.getByRole("status")).toContainText("0x00");
+  await expect(page.locator(".status-bar")).toContainText("0x00");
   await page.getByRole("button", { name: "PUSH 4" }).click();
-  await expect(page.getByRole("status")).toContainText("0x1f");
+  await expect(page.locator(".status-bar")).toContainText("0x1f");
   await page.getByRole("tab", { name: "Redes & HTTP" }).click();
   await page.getByLabel("DNS em cache").check();
   await page.getByLabel("Perder o primeiro SYN").check();
@@ -152,7 +152,7 @@ test("CPU executa, desafio salva progresso e navegação funciona", async ({
     await page
       .getByRole("button", { name: "Próximo passo", exact: true })
       .click();
-  await expect(page.getByRole("status")).toContainText("Resposta recebida");
+  await expect(page.locator(".status-bar")).toContainText("Resposta recebida");
   await expect(page.locator("body")).toHaveJSProperty(
     "scrollWidth",
     await page.evaluate(() => innerWidth),
@@ -173,5 +173,5 @@ test("busca, glossário e retorno de estado", async ({ page }) => {
   await page
     .getByRole("button", { name: "Voltar um passo", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText("Pronto.");
+  await expect(page.locator(".status-bar")).toContainText("Pronto.");
 });
