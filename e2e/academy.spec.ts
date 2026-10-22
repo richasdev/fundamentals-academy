@@ -115,6 +115,8 @@ test("bancadas 3D têm inspeção acessível e controles espaciais", async ({
 test("CPU executa, desafio salva progresso e navegação funciona", async ({
   page,
 }) => {
+  // Este fluxo verifica estado e persistência sem depender do ritmo da GPU do CI.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: "Como um programa ganha vida?" }),
