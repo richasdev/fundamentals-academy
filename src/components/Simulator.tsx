@@ -25,12 +25,15 @@ function useEngine<S>(model: Model<S>) {
   const [history, setHistory] = useState<S[]>(() => [model.initial()]);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [motionPaused, setMotionPaused] = useState(false);
   const state = history[history.length - 1];
   const done = model.done(state);
-  const step = () =>
+  const step = () => {
+    setMotionPaused(false);
     setHistory((h) =>
       model.done(h[h.length - 1]) ? h : [...h, model.step(h[h.length - 1])],
     );
+  };
   useEffect(() => {
     setHistory([model.initial()]);
     setPlaying(false);
@@ -53,14 +56,20 @@ function useEngine<S>(model: Model<S>) {
     speed,
     done,
     step,
-    toggle: () => setPlaying(!playing),
+    motionPaused,
+    toggle: () => {
+      setMotionPaused(playing);
+      setPlaying(!playing);
+    },
     setSpeed,
     reset: () => {
       setPlaying(false);
+      setMotionPaused(false);
       setHistory([model.initial()]);
     },
     back: () => {
       setPlaying(false);
+      setMotionPaused(false);
       setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h));
     },
   };
@@ -294,7 +303,12 @@ function CpuLab() {
         <div className="visual-area">
           {three ? (
             <Suspense fallback={<p>Carregando cena…</p>}>
-              <Hardware3D kind="cpu" state={s} />
+              <Hardware3D
+                kind="cpu"
+                state={s}
+                speed={e.speed}
+                paused={e.motionPaused}
+              />
             </Suspense>
           ) : (
             <CpuDiagram s={s} />
@@ -502,7 +516,12 @@ function NetworkLab() {
       </div>
       {three && (
         <Suspense fallback={<p>Preparando a bancada…</p>}>
-          <Hardware3D kind="network" state={s} />
+          <Hardware3D
+            kind="network"
+            state={s}
+            speed={e.speed}
+            paused={e.motionPaused}
+          />
         </Suspense>
       )}
       <div className="network-content">

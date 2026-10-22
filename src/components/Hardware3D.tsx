@@ -1,17 +1,29 @@
 import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Line, RoundedBox } from "@react-three/drei";
+import {
+  OrbitControls,
+  Line,
+  RoundedBox,
+  Environment,
+  Lightformer,
+} from "@react-three/drei";
 import { CanvasTexture, SRGBColorSpace } from "three";
 import type {
   CpuState,
   MemoryState,
   NetworkState,
 } from "../simulators/engines";
+import { cpuFlow, memoryFlow, networkFlow } from "../simulators/flows";
+import { program } from "../simulators/engines";
+import { useAppearance } from "../theme";
+import DataFlow from "./DataFlow";
+import PhysicalSurface from "./PhysicalSurface";
 import ModelDetails, { BoardDetails, type PartKind } from "./ModelDetails";
-type Props =
+type Props = (
   | { kind: "cpu"; state: CpuState }
   | { kind: "memory"; state: MemoryState }
-  | { kind: "network"; state: NetworkState };
+  | { kind: "network"; state: NetworkState }
+) & { speed?: number; paused?: boolean };
 type Vec = [number, number, number];
 class SceneBoundary extends Component<
   { children: ReactNode },
@@ -47,17 +59,17 @@ function Label({
     canvas.width = 320;
     canvas.height = sub ? 130 : 80;
     const c = canvas.getContext("2d")!;
-    c.fillStyle = "#1b241df0";
+    c.fillStyle = "#222222f0";
     c.fillRect(0, 0, canvas.width, canvas.height);
-    c.strokeStyle = selected ? "#ead6a9" : "#8c9d7c";
+    c.strokeStyle = selected ? "#d7d7d7" : "#979797";
     c.lineWidth = 3;
     c.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
-    c.fillStyle = "#eee7d4";
+    c.fillStyle = "#e7e7e7";
     c.textAlign = "center";
     c.font = "500 32px monospace";
     c.fillText(label, 160, sub ? 48 : 51);
     if (sub) {
-      c.fillStyle = "#d4c1a0";
+      c.fillStyle = "#c3c3c3";
       c.font = "27px monospace";
       c.fillText(sub, 160, 95);
     }
@@ -114,7 +126,10 @@ function Part({
                       ? "packet"
                       : "ram";
   return (
-    <group position={position}>
+    <group
+      position={position}
+      rotation={kind === "screen" ? [-0.12, 0, 0] : [0, 0, 0]}
+    >
       <group
         onClick={(e) => {
           e.stopPropagation();
@@ -131,13 +146,37 @@ function Part({
           args={size}
           radius={Math.min(0.055, size[1] * 0.12)}
           smoothness={2}
+          castShadow
+          receiveShadow
         >
-          <meshStandardMaterial
-            color={color}
-            roughness={0.65}
-            metalness={0.25}
-            emissive={selected ? "#b6b47a" : "#000000"}
-            emissiveIntensity={0.18}
+          <PhysicalSurface
+            kind={
+              ["laptop", "server"].includes(kind)
+                ? "metal"
+                : ["ram", "byte", "register", "control"].includes(kind)
+                  ? "pcb"
+                  : "plastic"
+            }
+            color={
+              kind === "cpu"
+                ? "#2c2c2c"
+                : kind === "byte"
+                  ? color
+                  : kind === "control"
+                    ? "#234739"
+                    : kind === "laptop"
+                      ? "#acacac"
+                      : kind === "screen"
+                        ? "#282828"
+                        : kind === "server"
+                          ? "#484848"
+                          : kind === "dns"
+                            ? "#393939"
+                            : ["ram", "byte", "register"].includes(kind)
+                              ? "#254f3e"
+                              : color
+            }
+            emissive={selected ? "#746c43" : "#000000"}
           />
         </RoundedBox>
         <ModelDetails kind={kind} size={size} value={Number(sub) || 0} />
@@ -147,6 +186,14 @@ function Part({
       )}
     </group>
   );
+}
+function StaticShadows({ revision }: { revision: string }) {
+  const { gl, invalidate } = useThree();
+  useEffect(() => {
+    gl.shadowMap.needsUpdate = true;
+    invalidate();
+  }, [gl, revision, invalidate]);
+  return null;
 }
 function FitCamera() {
   const { camera, size, invalidate } = useThree();
@@ -160,6 +207,7 @@ function FitCamera() {
   return null;
 }
 export default function Hardware3D(props: Props) {
+  const { theme } = useAppearance();
   const [selected, setSelected] = useState(""),
     [spread, setSpread] = useState(0.25),
     [rotation, setRotation] = useState(0),
@@ -167,6 +215,16 @@ export default function Hardware3D(props: Props) {
   const choose = (text: string) => setSelected(text);
   const s = props.state;
   const gap = 1 + spread * 0.6;
+  const [replay, setReplay] = useState(0);
+  const flow = useMemo(
+    () =>
+      props.kind === "cpu"
+        ? cpuFlow(props.state, gap, spread)
+        : props.kind === "memory"
+          ? memoryFlow(props.state, gap)
+          : networkFlow(props.state, gap),
+    [props.kind, s, gap, spread],
+  );
   useEffect(() => setSelected(""), [s]);
   const inspectOptions =
     props.kind === "cpu"
@@ -218,6 +276,12 @@ export default function Hardware3D(props: Props) {
         <Canvas
           key={cameraKey}
           frameloop="demand"
+          shadows
+          onCreated={({ gl }) => {
+            gl.shadowMap.autoUpdate = false;
+            gl.shadowMap.needsUpdate = true;
+          }}
+          gl={{ antialias: true }}
           dpr={[1, 1.5]}
           camera={{
             position: props.kind === "memory" ? [5, 7, 7] : [6, 5, 8],
@@ -225,16 +289,61 @@ export default function Hardware3D(props: Props) {
           }}
         >
           <FitCamera />
-          <color attach="background" args={["#171b19"]} />
-          <ambientLight intensity={1.7} />
-          <directionalLight position={[4, 8, 5]} intensity={3} />
+          <StaticShadows revision={`${rotation}-${spread}-${flow?.id ?? 0}`} />
+          <color
+            attach="background"
+            args={[theme === "dark" ? "#171b19" : "#f5f5f3"]}
+          />
+          <ambientLight intensity={0.65} />
+          <Environment resolution={64} frames={1}>
+            <Lightformer
+              position={[0, 5, -3]}
+              rotation={[Math.PI / 2, 0, 0]}
+              scale={[10, 8, 1]}
+              intensity={3}
+              color="#e9e9e9"
+            />
+            <Lightformer
+              position={[-6, 2, 2]}
+              rotation={[0, Math.PI / 2, 0]}
+              scale={[5, 8, 1]}
+              intensity={2}
+              color="#d0d0d0"
+            />
+            <Lightformer
+              position={[6, 3, 3]}
+              rotation={[0, -Math.PI / 2, 0]}
+              scale={[4, 6, 1]}
+              intensity={2}
+              color="#cbcbcb"
+            />
+          </Environment>
+          <directionalLight
+            position={[4, 8, 5]}
+            intensity={3}
+            castShadow
+            shadow-mapSize={[1024, 1024]}
+            shadow-camera-left={-9}
+            shadow-camera-right={9}
+            shadow-camera-top={8}
+            shadow-camera-bottom={-8}
+            shadow-bias={-0.0005}
+          />
           <directionalLight
             position={[-4, 3, -2]}
             intensity={1}
-            color="#a3caca"
+            color="#c2c2c2"
           />
           <group rotation={[0, rotation, 0]}>
-            <mesh position={[0, -0.5, 0]}>
+            {flow && (
+              <DataFlow
+                key={replay}
+                event={flow}
+                speed={props.speed}
+                paused={props.paused}
+              />
+            )}
+            <mesh position={[0, -0.5, 0]} castShadow receiveShadow>
               <boxGeometry
                 args={[
                   props.kind === "network" ? 11 : 9,
@@ -242,7 +351,7 @@ export default function Hardware3D(props: Props) {
                   props.kind === "memory" ? 7 : 5,
                 ]}
               />
-              <meshStandardMaterial color="#293a34" roughness={0.9} />
+              <PhysicalSurface kind="pcb" color="#153e2c" />
             </mesh>
             <BoardDetails
               network={props.kind === "network"}
@@ -254,10 +363,28 @@ export default function Hardware3D(props: Props) {
                 const stage = c.cycles === 0 ? -1 : (c.phase + 2) % 3;
                 return (
                   <>
+                    {program.map((instruction, i) => (
+                      <Part
+                        key={"instruction" + i}
+                        position={[-1.1 + i * 0.7, -0.1, -1.95]}
+                        size={[0.55, 0.2, 0.45]}
+                        color="#333333"
+                        label={instruction.op}
+                        sub={"ROM " + i}
+                        onSelect={() =>
+                          choose(
+                            "Memória de instruções [" +
+                              i +
+                              "]: " +
+                              instruction.op,
+                          )
+                        }
+                      />
+                    ))}
                     <Part
                       position={[0, 0.05 + spread, 0]}
                       size={[2, 0.7, 2]}
-                      color={stage === 2 ? "#9ab58c" : "#555f57"}
+                      color={stage === 2 ? "#acacac" : "#5c5c5c"}
                       label="CPU"
                       sub={`ALU · ACC ${c.acc}`}
                       onSelect={() =>
@@ -279,7 +406,7 @@ export default function Hardware3D(props: Props) {
                           >
                             <boxGeometry args={[0.07, 0.07, 0.4]} />
                             <meshStandardMaterial
-                              color="#b5a987"
+                              color="#c7ad74"
                               metalness={0.7}
                               roughness={0.4}
                             />
@@ -290,7 +417,7 @@ export default function Hardware3D(props: Props) {
                     <Part
                       position={[0, 1.1 + spread * 2, 0]}
                       size={[1.65, 0.22, 1.65]}
-                      color="#9baba0"
+                      color="#a7a7a7"
                       label="CONTROLE"
                       sub={
                         stage < 0
@@ -324,7 +451,7 @@ export default function Hardware3D(props: Props) {
                         key={r.label}
                         position={[2.7 * gap, -0.08, (i - 1) * 1.05]}
                         size={[1.4, 0.35, 0.7]}
-                        color="#b7a18b"
+                        color="#a4a4a4"
                         label={r.label}
                         sub={String(r.value)}
                         onSelect={() =>
@@ -345,10 +472,10 @@ export default function Hardware3D(props: Props) {
                         size={[0.63, 0.32, 0.32]}
                         color={
                           i === 8 || i === 9
-                            ? "#91a894"
+                            ? "#a2a2a2"
                             : i === 10
-                              ? "#cf9c76"
-                              : "#4b6356"
+                              ? "#a4a4a4"
+                              : "#5d5d5d"
                         }
                         label={
                           i === 8 || i === 9 || i === 10
@@ -367,7 +494,7 @@ export default function Hardware3D(props: Props) {
                         [-2 * gap, -0.25, 0],
                         [-1.1, -0.25, 0],
                       ]}
-                      color={stage === 0 ? "#e3c28b" : "#648475"}
+                      color={stage === 0 ? "#c5c5c5" : "#7c7c7c"}
                       lineWidth={3}
                     />
                     <Line
@@ -375,12 +502,25 @@ export default function Hardware3D(props: Props) {
                         [1.1, -0.25, 0],
                         [2.4 * gap, -0.25, 0],
                       ]}
-                      color={stage === 2 ? "#e3c28b" : "#648475"}
+                      color={stage === 2 ? "#c5c5c5" : "#7c7c7c"}
                       lineWidth={3}
                     />
                   </>
                 );
               })()}
+            {props.kind === "memory" && (
+              <Part
+                position={[-3.7, -0.1, -2.7]}
+                size={[1, 0.35, 0.65]}
+                color="#333333"
+                label="PROGRAMA"
+                onSelect={() =>
+                  choose(
+                    "Origem das operações PUSH, POP, malloc e free. O movimento representa a operação do programa, não uma conexão elétrica real.",
+                  )
+                }
+              />
+            )}
             {props.kind === "memory" &&
               (() => {
                 const m = s as MemoryState;
@@ -404,7 +544,7 @@ export default function Hardware3D(props: Props) {
                         (Math.floor(i / 8) - 1.5) * 1.05 * gap,
                       ]}
                       size={[0.68, height, 0.75]}
-                      color={stack ? "#b4a0c2" : block ? "#9fb899" : "#3d5246"}
+                      color={stack ? "#75658c" : block ? "#5f8c64" : "#3d5246"}
                       label={i.toString(16).padStart(2, "0")}
                       sub={stack ? String(value) : undefined}
                       selected={selected.startsWith(
@@ -428,7 +568,7 @@ export default function Hardware3D(props: Props) {
                     <Part
                       position={[-x, 0, 0]}
                       size={[1.6, 0.2, 1.2]}
-                      color="#a6b6b0"
+                      color="#b2b2b2"
                       label="CLIENTE"
                       sub="navegador"
                       onSelect={() =>
@@ -440,7 +580,7 @@ export default function Hardware3D(props: Props) {
                     <Part
                       position={[-x, 0.8, -0.35]}
                       size={[1.6, 1.2, 0.12]}
-                      color="#596f68"
+                      color="#6a6a6a"
                       label=""
                       onSelect={() =>
                         choose(
@@ -451,7 +591,7 @@ export default function Hardware3D(props: Props) {
                     <Part
                       position={[0, 0, -1.2 * gap]}
                       size={[1.3, 1, 1]}
-                      color="#a9bda0"
+                      color="#b7b7b7"
                       label="DNS"
                       sub="192.0.2.53"
                       onSelect={() =>
@@ -463,7 +603,7 @@ export default function Hardware3D(props: Props) {
                     <Part
                       position={[x, 0.6, 0]}
                       size={[1.5, 2, 1.3]}
-                      color="#a99581"
+                      color="#989898"
                       label="SERVIDOR"
                       sub="192.0.2.10"
                       onSelect={() =>
@@ -478,7 +618,7 @@ export default function Hardware3D(props: Props) {
                         [0, 0, -1.2 * gap],
                         [x, 0, 0],
                       ]}
-                      color="#688e7b"
+                      color="#858585"
                       lineWidth={2}
                     />
                     <Line
@@ -486,7 +626,7 @@ export default function Hardware3D(props: Props) {
                         [-x, 0.05, 0.5],
                         [x, 0.05, 0.5],
                       ]}
-                      color="#9b9474"
+                      color="#939393"
                       lineWidth={2}
                     />
                     {n.stage > 0 && (
@@ -503,7 +643,7 @@ export default function Hardware3D(props: Props) {
                               ]
                         }
                         size={[0.38, 0.35, 0.55]}
-                        color={n.retried ? "#dba47d" : "#e0d3a5"}
+                        color={n.retried ? "#cf8f73" : "#dcc28d"}
                         label={
                           [
                             "",
@@ -523,8 +663,21 @@ export default function Hardware3D(props: Props) {
                 );
               })()}
           </group>
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, -0.575, 0]}
+            receiveShadow
+          >
+            <planeGeometry args={[30, 30]} />
+            <shadowMaterial transparent opacity={0.35} />
+          </mesh>
           <gridHelper
-            args={[30, 30, "#3c4940", "#222f29"]}
+            args={[
+              30,
+              30,
+              theme === "dark" ? "#434c46" : "#d0d0d0",
+              theme === "dark" ? "#2b352e" : "#e3e3e3",
+            ]}
             position={[0, -0.58, 0]}
           />
           <OrbitControls
@@ -536,6 +689,22 @@ export default function Hardware3D(props: Props) {
           />
         </Canvas>
       </SceneBoundary>
+      {flow && (
+        <div className="flow-readout" aria-live="polite">
+          <span>FLUXO DESTA ETAPA</span>
+          <strong>
+            <span>{flow.source}</span> → <span>{flow.target}</span>
+          </strong>
+          <code>{flow.payload}</code>
+          <p>{flow.explanation}</p>
+          <button
+            onClick={() => setReplay((r) => r + 1)}
+            disabled={props.paused}
+          >
+            ↺ Rever fluxo
+          </button>
+        </div>
+      )}
       <div className="scene-inspector" aria-live="polite">
         {selected || "Selecione uma peça para investigar o que ela faz."}
       </div>

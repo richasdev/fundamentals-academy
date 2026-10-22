@@ -1,4 +1,60 @@
 import { test, expect } from "@playwright/test";
+test("tema claro e escuro persistem entre visitas", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/#map");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.getByRole("button", { name: "Ativar tema escuro" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Ativar tema claro" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("body")).toHaveJSProperty(
+    "scrollWidth",
+    await page.evaluate(() => innerWidth),
+  );
+});
+test("fluxos identificam origem, destino e handshake sem alterar o estado ao rever", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/#cpu");
+  await page
+    .getByRole("button", { name: "Próximo passo", exact: true })
+    .click();
+  await expect(page.locator(".flow-readout")).toContainText("IR");
+  await page.getByRole("tab", { name: "Memória" }).click();
+  await page.getByRole("button", { name: "PUSH 4" }).click();
+  await expect(page.locator(".flow-readout")).toContainText("Memória 0x1f");
+  await page.getByRole("tab", { name: "Redes & HTTP" }).click();
+  await page.getByLabel("DNS em cache").check();
+  await page
+    .getByRole("button", { name: "Próximo passo", exact: true })
+    .click();
+  await expect(page.locator(".flow-readout code")).toContainText(
+    "SYN · seq=100",
+  );
+  await page
+    .getByRole("button", { name: "Próximo passo", exact: true })
+    .click();
+  await expect(page.locator(".flow-readout code")).toContainText("SYN-ACK");
+  await expect(page.locator(".flow-readout strong")).toContainText(
+    "Servidor → Cliente",
+  );
+  const status = await page.locator(".status-bar").textContent();
+  await page.getByRole("button", { name: "Rever fluxo" }).click();
+  await expect(page.locator(".status-bar")).toHaveText(status || "");
+  await page
+    .getByRole("button", { name: "Próximo passo", exact: true })
+    .click();
+  await expect(page.locator(".flow-readout code")).toContainText(
+    "ACK=501 + GET /",
+  );
+  await expect(page.locator("body")).toHaveJSProperty(
+    "scrollWidth",
+    await page.evaluate(() => innerWidth),
+  );
+});
 test("bancadas 3D têm inspeção acessível e controles espaciais", async ({
   page,
 }) => {

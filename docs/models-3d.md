@@ -21,3 +21,11 @@ O pacote é um marcador conceitual da etapa de comunicação. Cabos não represe
 ## Renderização
 
 Peças repetidas pequenas usam `InstancedMesh` para compartilhar chamadas de desenho. Cenas usam `frameloop="demand"`, sem rotação automática, resolução limitada a 1,5× e geometrias com poucos segmentos. Rótulos são sprites com texturas geradas localmente e liberadas ao desmontar. A cena é carregada de forma assíncrona ao entrar em um laboratório. Os testes cobrem a presença do canvas, inspeção acessível, controles de rotação, troca entre os três modelos e ausência de erros JavaScript em desktop e celular. Isso não substitui profiling de GPU em dispositivos físicos.
+
+## Materiais, temas e movimento
+
+Materiais distinguem máscara de PCB verde, metais, plástico e silício. Mapas procedurais locais representam microrrugosidade e escovação; não usam imagens copiadas. Os temas claro e escuro alteram a interface e o fundo da bancada sem remover as cores do hardware. A preferência inicial segue o sistema e a escolha explícita fica em localStorage.
+
+Fluxos são eventos derivados de transições confirmadas do motor. O marcador mostra a origem, o destino e a mensagem da etapa, com curvas direcionais e narração. Rever o fluxo não executa novamente uma instrução nem envia outro pacote. A duração visual serve à leitura, não representa a escala de nanossegundos da CPU nem o tempo físico de viagem. O handshake usa números de sequência ilustrativos fixos; não implementa uma pilha TCP real. malloc/free mostram gerenciamento de blocos, não transferência do conteúdo. Em movimento reduzido, o marcador aparece no destino sem percorrer a curva.
+
+As sombras são recalculadas quando a disposição ou o estado muda, sem gerar novos mapas a cada frame do pacote. E2E usa um worker para evitar disputa da GPU entre navegadores de teste.
