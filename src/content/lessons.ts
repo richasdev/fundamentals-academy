@@ -5,9 +5,9 @@ export const labIds = [
   "memory",
   "os",
   "network",
-  "infra",
   "database",
   "compiler",
+  "infra",
   "architecture",
 ] as const;
 export type LabId = (typeof labIds)[number];
@@ -172,8 +172,8 @@ export const modules = [
   "Memória",
   "Sistemas operacionais e Linux",
   "Redes de computadores",
-  "Servidores e infraestrutura",
   "Bancos de dados",
   "Baixo nível e compiladores",
+  "Servidores e infraestrutura",
   "Engenharia e arquitetura",
 ];

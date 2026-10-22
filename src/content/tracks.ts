@@ -133,6 +133,14 @@ export const extraLessons: Record<ExtendedLabId, Lesson> = {
         "https://www.postgresql.org/docs/current/indexes-types.html",
       ],
       [
+        "PostgreSQL — isolamento",
+        "https://www.postgresql.org/docs/current/transaction-iso.html",
+      ],
+      [
+        "PostgreSQL — WAL e recuperação",
+        "https://www.postgresql.org/docs/current/wal-intro.html",
+      ],
+      [
         "PostgreSQL — transações",
         "https://www.postgresql.org/docs/current/tutorial-transactions.html",
       ],
