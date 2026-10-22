@@ -23,6 +23,7 @@ import {
   GraduationCap,
   FlaskConical,
 } from "lucide-react";
+import DevIntro from "./components/DevIntro";
 import Simulator from "./components/Simulator";
 import { lessons, modules, type LabId } from "./content/lessons";
 import { useAppearance } from "./theme";
@@ -178,7 +179,7 @@ export default function App() {
             }}
           >
             <span className="brand-symbol">
-              f<span>.</span>
+              <Terminal size={27} strokeWidth={1.7} />
             </span>
             <span>
               fundamentals<small>COMPUTER SCIENCE, EXPLAINED.</small>
@@ -339,38 +340,28 @@ export default function App() {
             </button>
           </header>
           <main id="main" ref={contentRef}>
-            <div className="page-heading">
-              <span className="eyebrow">
-                <span /> O COMPUTADOR É SEU EXPERIMENTO
-              </span>
-              <div className="heading-line">
-                <h1>
-                  {isLab
-                    ? "Abra. Desmonte."
-                    : page === "map"
-                      ? "Tudo está conectado."
-                      : "Ideias que se conectam."}
-                  <br />
-                  <em>
-                    {isLab
-                      ? "Entenda."
-                      : page === "map"
-                        ? "Encontre seu caminho."
-                        : "Explore o glossário."}
-                  </em>
-                </h1>
-                <p>
-                  {isLab
-                    ? "Desmonte conceitos. Manipule variáveis.\nDescubra o que acontece por trás da tela."
-                    : page === "map"
-                      ? "Do primeiro bit aos sistemas distribuídos.\nUma trilha de descobertas, no seu ritmo."
-                      : "Um ponto de partida para compreender\na linguagem dos computadores."}
-                </p>
-              </div>
-            </div>
+            <DevIntro
+              context={isLab ? "lab" : page === "map" ? "map" : "glossary"}
+              onExplore={() => {
+                if (!isLab) navigate("cpu");
+                requestAnimationFrame(() =>
+                  document
+                    .getElementById("lab-workbench")
+                    ?.scrollIntoView({
+                      behavior: window.matchMedia(
+                        "(prefers-reduced-motion: reduce)",
+                      ).matches
+                        ? "instant"
+                        : "smooth",
+                      block: "start",
+                    }),
+                );
+              }}
+            />
             {isLab ? (
               <>
                 <div
+                  id="lab-workbench"
                   className="lab-navigation"
                   role="tablist"
                   aria-label="Escolher laboratório"
@@ -621,8 +612,8 @@ export default function App() {
             </div>
             <footer>
               <span>
-                <span className="footer-brand">f.</span> Computação não é magia.
-                É um sistema que você pode entender.
+                <span className="footer-brand">&gt;_</span> Computação não é
+                magia. É um sistema que você pode entender.
               </span>
               <span>
                 Feito para explorar. Aberto para todos. <Globe2 size={13} />
