@@ -25,16 +25,68 @@ import {
 } from "lucide-react";
 import DevIntro from "./components/DevIntro";
 import Simulator from "./components/Simulator";
-import { lessons, modules, type LabId } from "./content/lessons";
+import {
+  lessons,
+  modules,
+  labIds,
+  chapterTitles,
+  type LabId,
+} from "./content/lessons";
 import { useAppearance } from "./theme";
 import { useProgress } from "./store";
 type Page = LabId | "map" | "glossary";
 const labNames: Record<LabId, string> = {
+  logic: "Bits e circuitos lógicos",
+  os: "Processos, kernel e escalonamento",
+  infra: "Cache, balanceamento e disponibilidade",
+  database: "Páginas, índices e consultas",
+  compiler: "Tokens, AST e máquina de pilha",
+  architecture: "Sistemas, replicação e quórum",
   cpu: "Por dentro da CPU",
   memory: "Stack, heap e endereços",
   network: "A jornada de uma requisição",
 };
 const glossary = [
+  ["Bit", "Estado binário; n bits representam 2ⁿ combinações.", "logic"],
+  [
+    "NAND",
+    "Porta que produz zero somente quando ambas as entradas são um.",
+    "logic",
+  ],
+  ["Quantum", "Limite de tempo de CPU por turno em round-robin.", "os"],
+  ["Syscall", "Pedido de serviço de um programa ao kernel.", "os"],
+  [
+    "Cache",
+    "Cópia reutilizável de uma resposta sob uma política de validade.",
+    "infra",
+  ],
+  ["Balanceador", "Distribui requisições entre destinos disponíveis.", "infra"],
+  [
+    "Índice",
+    "Estrutura adicional que ajuda a localizar registros.",
+    "database",
+  ],
+  [
+    "Transação",
+    "Unidade de operações com garantias definidas pelo banco.",
+    "database",
+  ],
+  [
+    "AST",
+    "Árvore sintática abstrata produzida pela análise do programa.",
+    "compiler",
+  ],
+  ["Bytecode", "Instruções de uma máquina virtual.", "compiler"],
+  [
+    "Quórum",
+    "Quantidade de confirmações exigida para uma decisão.",
+    "architecture",
+  ],
+  [
+    "C4",
+    "Níveis de contexto, containers, componentes e código.",
+    "architecture",
+  ],
   [
     "Acumulador",
     "Registrador que recebe resultados das operações da nossa CPU.",
@@ -76,9 +128,7 @@ const glossary = [
 ] as const;
 function initialPage(): Page {
   const p = location.hash.slice(1);
-  return ["cpu", "memory", "network", "map", "glossary"].includes(p)
-    ? (p as Page)
-    : "cpu";
+  return [...labIds, "map", "glossary"].includes(p) ? (p as Page) : "cpu";
 }
 export default function App() {
   const { theme, setTheme } = useAppearance();
@@ -89,6 +139,7 @@ export default function App() {
     [answer, setAnswer] = useState<number | null>(null),
     [feedback, setFeedback] = useState("");
   const { completed, complete, replace } = useProgress();
+  const [chapter, setChapter] = useState(0);
   const contentRef = useRef<HTMLElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const navigate = (p: Page) => {
@@ -97,6 +148,7 @@ export default function App() {
     setQuery("");
     setMenu(false);
     setAnswer(null);
+    setChapter(0);
     setTab("explore");
     window.scrollTo({ top: 0, behavior: "instant" });
   };
@@ -104,6 +156,7 @@ export default function App() {
     const handler = () => {
       setPage(initialPage());
       setAnswer(null);
+      setChapter(0);
       setTab("explore");
     };
     window.addEventListener("hashchange", handler);
@@ -121,7 +174,7 @@ export default function App() {
         ease: "outQuad",
       });
   }, [page]);
-  const isLab = page === "cpu" || page === "memory" || page === "network";
+  const isLab = (labIds as readonly string[]).includes(page);
   const id: LabId = isLab ? (page as LabId) : "cpu";
   const lesson = lessons[id];
   const exportProgress = () => {
@@ -145,7 +198,7 @@ export default function App() {
         !Array.isArray(data.completed) ||
         !data.completed.every(
           (x: unknown) =>
-            typeof x === "string" && ["cpu", "memory", "network"].includes(x),
+            typeof x === "string" && (labIds as readonly string[]).includes(x),
         )
       )
         throw Error();
@@ -198,7 +251,7 @@ export default function App() {
               onClick={() => navigate("cpu")}
             >
               <FlaskConical size={18} /> Laboratórios{" "}
-              <span className="nav-count">03</span>
+              <span className="nav-count">09</span>
             </button>
             <button
               className={page === "glossary" ? "selected" : ""}
@@ -214,14 +267,7 @@ export default function App() {
           </div>
           <div className="module-list">
             {modules.map((m, i) => {
-              const target =
-                i === 1
-                  ? "cpu"
-                  : i === 2
-                    ? "memory"
-                    : i === 4
-                      ? "network"
-                      : "map";
+              const target = labIds[i];
               return (
                 <button
                   key={m}
@@ -234,8 +280,8 @@ export default function App() {
                   <span>{m}</span>
                   {isLab && page === target ? (
                     <span className="module-indicator" />
-                  ) : i !== 1 && i !== 2 && i !== 4 ? (
-                    <small>em breve</small>
+                  ) : completed.includes(target) ? (
+                    <Check size={13} />
                   ) : null}
                 </button>
               );
@@ -245,12 +291,18 @@ export default function App() {
             <div className="progress-heading">
               <GraduationCap size={17} />
               <span>Seu progresso</span>
-              <strong>{Math.round((completed.length / 3) * 100)}%</strong>
+              <strong>
+                {Math.round((completed.length / labIds.length) * 100)}%
+              </strong>
             </div>
             <div className="progress-meter">
-              <i style={{ width: `${(completed.length / 3) * 100}%` }} />
+              <i
+                style={{
+                  width: `${(completed.length / labIds.length) * 100}%`,
+                }}
+              />
             </div>
-            <p>{completed.length} de 3 laboratórios concluídos</p>
+            <p>{completed.length} de 9 trilhas concluídos</p>
             <div className="progress-actions">
               <button onClick={exportProgress} title="Exportar progresso">
                 <Download size={14} /> Exportar
@@ -345,16 +397,14 @@ export default function App() {
               onExplore={() => {
                 if (!isLab) navigate("cpu");
                 requestAnimationFrame(() =>
-                  document
-                    .getElementById("lab-workbench")
-                    ?.scrollIntoView({
-                      behavior: window.matchMedia(
-                        "(prefers-reduced-motion: reduce)",
-                      ).matches
-                        ? "instant"
-                        : "smooth",
-                      block: "start",
-                    }),
+                  document.getElementById("lab-workbench")?.scrollIntoView({
+                    behavior: window.matchMedia(
+                      "(prefers-reduced-motion: reduce)",
+                    ).matches
+                      ? "instant"
+                      : "smooth",
+                    block: "start",
+                  }),
                 );
               }}
             />
@@ -366,8 +416,18 @@ export default function App() {
                   role="tablist"
                   aria-label="Escolher laboratório"
                 >
-                  {(["cpu", "memory", "network"] as LabId[]).map((l, i) => {
-                    const Icon = [Cpu, Layers, Network][i];
+                  {labIds.map((l, i) => {
+                    const Icon = [
+                      Code2,
+                      Cpu,
+                      Layers,
+                      Terminal,
+                      Network,
+                      Globe2,
+                      Layers,
+                      Code2,
+                      Network,
+                    ][i];
                     return (
                       <button
                         role="tab"
@@ -378,7 +438,19 @@ export default function App() {
                       >
                         <Icon size={17} />
                         <span>
-                          {["CPU & execução", "Memória", "Redes & HTTP"][i]}
+                          {
+                            [
+                              "Bits & lógica",
+                              "CPU & execução",
+                              "Memória",
+                              "SO & Linux",
+                              "Redes & HTTP",
+                              "Infraestrutura",
+                              "Bancos de dados",
+                              "Compiladores",
+                              "Arquitetura",
+                            ][i]
+                          }
                         </span>
                         <small>0{i + 1}</small>
                         {completed.includes(l) && <Check size={13} />}
@@ -392,16 +464,15 @@ export default function App() {
                 <div className="lesson-header">
                   <div>
                     <div className="lesson-eyebrow">
-                      <span>
-                        LAB 0{["cpu", "memory", "network"].indexOf(id) + 1}
-                      </span>{" "}
+                      <span>LAB 0{labIds.indexOf(id) + 1}</span>{" "}
                       {lesson.eyebrow}
                     </div>
                     <h2>{lesson.title}</h2>
                     <p>{lesson.description}</p>
                   </div>
                   <span className="difficulty">
-                    <i /> Fundamental <span>·</span> 12 min de exploração
+                    <i /> Fundamental <span>·</span> 3 aulas + laboratório +
+                    desafio
                   </span>
                 </div>
                 <div className="lesson-tabs">
@@ -429,13 +500,52 @@ export default function App() {
                 </div>
                 {tab === "understand" && (
                   <section className="reading-panel">
-                    <span className="eyebrow">A PERGUNTA INICIAL</span>
-                    <h3>{lesson.question}</h3>
-                    <p>{lesson.concept}</p>
-                    <h3>Por dentro do mecanismo</h3>
-                    <p>{lesson.deep}</p>
-                    <h3>Onde isso aparece no mundo real?</h3>
-                    <p>{lesson.practical}</p>
+                    <span className="eyebrow">
+                      AULA {chapter + 1} DE 3 · {lesson.eyebrow}
+                    </span>
+                    <nav
+                      className="chapter-nav"
+                      aria-label="Aulas desta trilha"
+                    >
+                      {chapterTitles[id].map((title, i) => (
+                        <button
+                          key={title}
+                          aria-current={chapter === i ? "step" : undefined}
+                          onClick={() => setChapter(i)}
+                        >
+                          <span>0{i + 1}</span>
+                          {title}
+                        </button>
+                      ))}
+                    </nav>
+                    <h3>{chapterTitles[id][chapter]}</h3>
+                    <p>
+                      {[lesson.concept, lesson.deep, lesson.practical][chapter]}
+                    </p>
+                    <div className="chapter-actions">
+                      <button
+                        disabled={chapter === 0}
+                        onClick={() => setChapter((c) => c - 1)}
+                      >
+                        ← Aula anterior
+                      </button>
+                      <button
+                        onClick={() =>
+                          chapter < 2
+                            ? setChapter((c) => c + 1)
+                            : setTab("challenge")
+                        }
+                      >
+                        {chapter < 2 ? "Próxima aula →" : "Ir para o desafio →"}
+                      </button>
+                    </div>
+                    <div className="experiment">
+                      <h3>Investigue na bancada</h3>
+                      <p>{lesson.challenge}</p>
+                      <button onClick={() => setTab("explore")}>
+                        Abrir laboratório <ArrowRight size={16} />
+                      </button>
+                    </div>
                     <div className="model-note">
                       <strong>Modelo didático e suas limitações</strong>
                       <p>{lesson.limitations}</p>
@@ -535,12 +645,28 @@ export default function App() {
                     Conceitos cobertos: {lesson.eyebrow.toLowerCase()}.
                   </p>
                 </details>
+                <div className="track-next">
+                  <span>
+                    {completed.includes(id)
+                      ? "✓ Desafio concluído nesta trilha"
+                      : "Conclua o desafio para registrar seu progresso"}
+                  </span>
+                  <button
+                    onClick={() =>
+                      navigate(labIds[(labIds.indexOf(id) + 1) % labIds.length])
+                    }
+                  >
+                    Próxima trilha:{" "}
+                    {modules[(labIds.indexOf(id) + 1) % labIds.length]}{" "}
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
               </>
             ) : page === "map" ? (
               <>
                 <div className="map-intro">
                   <span className="section-label">
-                    09 TRILHAS · 03 LABORATÓRIOS DISPONÍVEIS
+                    09 TRILHAS · 27 AULAS · 09 LABORATÓRIOS
                   </span>
                   <p>
                     Comece onde sua curiosidade levar. Pré-requisitos são
@@ -549,16 +675,9 @@ export default function App() {
                 </div>
                 <div className="knowledge-map">
                   {modules.map((m, i) => {
-                    const lab: LabId | null =
-                      i === 1
-                        ? "cpu"
-                        : i === 2
-                          ? "memory"
-                          : i === 4
-                            ? "network"
-                            : null;
+                    const lab = labIds[i];
                     return (
-                      <article key={m} className={lab ? "available" : ""}>
+                      <article key={m} className="available">
                         <span className="map-number">
                           {String(i + 1).padStart(2, "0")}
                         </span>
@@ -570,19 +689,15 @@ export default function App() {
                           </span>
                           <h2>{m}</h2>
                           <p>
-                            {lab
-                              ? labNames[lab]
-                              : "Trilha planejada para uma próxima etapa da academia."}
+                            {labNames[lab]} · 3 aulas + laboratório + desafio
                           </p>
                         </div>
-                        {lab ? (
+                        {
                           <button onClick={() => navigate(lab)}>
                             {completed.includes(lab) ? "Revisitar" : "Explorar"}{" "}
                             <ArrowUpRight size={18} />
                           </button>
-                        ) : (
-                          <span className="coming-soon">Em breve</span>
-                        )}
+                        }
                       </article>
                     );
                   })}
@@ -602,7 +717,7 @@ export default function App() {
               </div>
             )}
             <div className="mobile-progress">
-              <span>Seu progresso: {completed.length} / 3 laboratórios</span>
+              <span>Seu progresso: {completed.length} / 9 trilhas</span>
               <button onClick={exportProgress}>
                 <Download size={13} /> Exportar
               </button>

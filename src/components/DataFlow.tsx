@@ -58,14 +58,25 @@ export default function DataFlow({
     : theme === "dark"
       ? "#a2f5e8"
       : "#218d96";
-  const payloadTexture = useMemo(() => {
+  const payloadLabel = useMemo(() => {
     const canvas = document.createElement("canvas");
     canvas.width = 768;
-    canvas.height = 192;
     const ctx = canvas.getContext("2d")!;
+    ctx.font = "bold 36px monospace";
+    const lines: string[] = [];
+    let line = "";
+    for (const word of event.payload.split(" ")) {
+      const next = line ? line + " " + word : word;
+      if (ctx.measureText(next).width > 710 && line) {
+        lines.push(line);
+        line = word;
+      } else line = next;
+    }
+    lines.push(line);
+    canvas.height = Math.max(192, 90 + lines.length * 44);
     ctx.fillStyle = "#101c22f5";
     ctx.beginPath();
-    ctx.roundRect(4, 4, 760, 184, 20);
+    ctx.roundRect(4, 4, 760, canvas.height - 8, 20);
     ctx.fill();
     ctx.strokeStyle = color;
     ctx.lineWidth = 5;
@@ -79,24 +90,12 @@ export default function DataFlow({
     );
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 36px monospace";
-    // Duas linhas preservam o conteúdo completo, inclusive seq e ack do TCP.
-    const words = event.payload.split(" ");
-    let line = "",
-      y = 99;
-    for (const word of words) {
-      const next = line ? line + " " + word : word;
-      if (ctx.measureText(next).width > 710 && line) {
-        ctx.fillText(line, 26, y);
-        y += 44;
-        line = word;
-      } else line = next;
-    }
-    ctx.fillText(line, 26, y);
+    lines.forEach((text, i) => ctx.fillText(text, 26, 99 + i * 44));
     const texture = new CanvasTexture(canvas);
     texture.colorSpace = SRGBColorSpace;
-    return texture;
+    return { texture, ratio: canvas.height / canvas.width };
   }, [event.payload, event.lost, color]);
-  useEffect(() => () => payloadTexture.dispose(), [payloadTexture]);
+  useEffect(() => () => payloadLabel.texture.dispose(), [payloadLabel]);
   const curve = useMemo(() => {
     const from = new Vector3(...event.from),
       to = new Vector3(...event.to);
@@ -230,11 +229,11 @@ export default function DataFlow({
       <group ref={marker}>
         <sprite
           position={[0, 0.7, 0]}
-          scale={[0.34, 0.085, 1]}
+          scale={[0.34, 0.34 * payloadLabel.ratio, 1]}
           renderOrder={20}
         >
           <spriteMaterial
-            map={payloadTexture}
+            map={payloadLabel.texture}
             sizeAttenuation={false}
             transparent
             depthTest={false}

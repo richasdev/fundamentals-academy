@@ -20,7 +20,7 @@ O pacote é um marcador conceitual da etapa de comunicação. Cabos não represe
 
 ## Renderização
 
-Peças repetidas pequenas usam `InstancedMesh` para compartilhar chamadas de desenho. Cenas usam `frameloop="demand"`, sem rotação automática, resolução limitada a 1,5× e geometrias com poucos segmentos. Rótulos são sprites com texturas geradas localmente e liberadas ao desmontar. A cena é carregada de forma assíncrona ao entrar em um laboratório. Os testes cobrem a presença do canvas, inspeção acessível, controles de rotação, troca entre os três modelos e ausência de erros JavaScript em desktop e celular. Isso não substitui profiling de GPU em dispositivos físicos.
+Peças repetidas pequenas usam `InstancedMesh` para compartilhar chamadas de desenho. Cenas usam `frameloop="demand"`, sem rotação automática, resolução limitada a 1,5× e geometrias com poucos segmentos. Rótulos são sprites com texturas geradas localmente e liberadas ao desmontar. A cena é carregada de forma assíncrona ao entrar em um laboratório. Os testes cobrem a presença do canvas, inspeção acessível, controles de rotação, navegação entre as nove bancadas e ausência de erros JavaScript em desktop e celular. Isso não substitui profiling de GPU em dispositivos físicos.
 
 ## Materiais, temas e movimento
 
@@ -28,6 +28,12 @@ Materiais distinguem máscara de PCB verde, metais, plástico e silício. Mapas 
 
 Fluxos são eventos derivados de transições confirmadas do motor. O marcador mostra a origem, o destino e a mensagem da etapa, com curvas direcionais e narração. Rever o fluxo não executa novamente uma instrução nem envia outro pacote. A duração visual serve à leitura, não representa a escala de nanossegundos da CPU nem o tempo físico de viagem. O handshake usa números de sequência ilustrativos fixos; não implementa uma pilha TCP real. malloc/free mostram gerenciamento de blocos, não transferência do conteúdo. Em movimento reduzido, o marcador aparece no destino sem percorrer a curva.
 
-As sombras são recalculadas quando a disposição ou o estado muda, sem gerar novos mapas a cada frame do pacote. E2E usa um worker para evitar disputa da GPU entre navegadores de teste.
+Nas bancadas clássicas, as sombras são recalculadas quando a disposição ou o estado muda, sem gerar novos mapas a cada frame do pacote. E2E usa um worker para evitar disputa da GPU entre navegadores de teste.
 
 O fluxo visual usa pontos esféricos igualmente espaçados ao longo da curva. O dado aparece como uma esfera com núcleo branco, halo e rastro curto; um anel se expande ao chegar ao destino. Os pontos compartilham uma InstancedMesh e o halo é gerado localmente. A renderização para após a chegada. Pausa, velocidade, replay e movimento reduzido continuam ligados aos mesmos eventos da simulação.
+
+## Seis bancadas adicionais
+
+Lógica usa módulos de entrada, CI e saída com pinos, contatos e trilhas. Processos e fases de compilação usam módulos lógicos na mesma bancada: não são chips físicos independentes em um computador real. Infraestrutura e replicação reutilizam servidores com baias, ventilação e conectores. Páginas de banco aparecem sobre unidades com três pratos, eixo e braço metálico; a representação mostra endereçamento lógico e não corresponde a uma página por disco.
+
+As cenas oferecem órbita, zoom, separação, inspeção, alternativa 2D e readout de todos os valores. As curvas deslocam seus pontos junto com a vista explodida. Os fluxos carregam mensagens calculadas pelos modelos; um receptor ganha contorno e emissão após a chegada, e um destino indisponível nunca recebe esse destaque. O texto do dado usa sprites orientados para a câmera. Etiquetas expandem a altura para mensagens maiores, incluindo tokens do compilador.

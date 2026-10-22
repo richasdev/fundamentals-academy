@@ -1,3 +1,4 @@
+import WorkshopLab from "./WorkshopLab";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   Play,
@@ -19,7 +20,7 @@ import {
   type CpuState,
   type NetworkState,
 } from "../simulators/engines";
-import type { LabId } from "../content/lessons";
+import type { LabId, ExtendedLabId } from "../content/lessons";
 const Hardware3D = lazy(() => import("./Hardware3D"));
 function useEngine<S>(model: Model<S>) {
   const [history, setHistory] = useState<S[]>(() => [model.initial()]);
@@ -612,8 +613,10 @@ export default function Simulator({ id }: { id: LabId }) {
         <CpuLab />
       ) : id === "memory" ? (
         <MemoryLab />
-      ) : (
+      ) : id === "network" ? (
         <NetworkLab />
+      ) : (
+        <WorkshopLab key={id} id={id as ExtendedLabId} />
       )}
     </section>
   );

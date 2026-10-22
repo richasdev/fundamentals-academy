@@ -88,7 +88,7 @@ export const lessons: Record<LabId, Lesson> = {
       "Um programa é uma sequência de instruções guardadas na memória. O contador de programa (PC) aponta para a próxima instrução; a unidade de controle busca, decodifica e executa cada uma.",
     deep: "O registrador de instrução (IR) guarda a operação buscada. LOAD lê um byte da RAM para o acumulador; ADD soma outro byte; STORE escreve o acumulador de volta. O PC é incrementado na busca. Aqui cada instrução tem três microetapas. CPUs reais podem sobrepor instruções em pipelines, usar execução fora de ordem, caches e muitos registradores.",
     practical:
-      "O mesmo princípio está por trás de uma calculadora, um navegador ou um jogo: instruções transformam dados e produzem efeitos observáveis.",
+      "O mesmo princípio está por trás de uma calculadora, um navegador ou um jogo: instruções transformam dados e produzem efeitos observáveis. Nesta CPU o acumulador guarda inteiros sem sinal de 0 a 255. Ao calcular 250 + 10, o resultado matemático 260 precisa ser reduzido módulo 256, produzindo 4. Isso é um limite da representação; não significa que a soma matemática mudou. CPUs reais também têm instruções, flags e regras para interpretar overflow. Teste esses valores, acompanhe o ACC e confira a escrita em RAM[10]. O endereço 10 continua o mesmo; o conteúdo armazenado nele muda.",
     challenge:
       "Experimente 250 + 10. O resultado será 4: o acumulador tem 8 bits, e a soma é calculada módulo 256.",
     quiz: "Com os valores iniciais 5 e 3, qual será o valor de RAM[10] após STORE?",
@@ -116,7 +116,7 @@ export const lessons: Record<LabId, Lesson> = {
       "A stack organiza dados temporários em ordem LIFO: o último valor inserido é o primeiro a sair. O heap permite reservar blocos com duração controlada pelo programa. Endereços identificam posições, não os valores armazenados.",
     deep: "Este alocador percorre os blocos em ordem de endereço e escolhe o primeiro intervalo suficiente (first-fit). malloc reserva bytes e devolve um endereço; free devolve o bloco ao alocador. Em programas reais, a stack inclui frames, parâmetros e endereços de retorno. O espaço virtual de um processo é traduzido para memória física pelo sistema operacional e pela MMU.",
     practical:
-      "Entender duração e propriedade dos dados ajuda a reconhecer vazamentos, acessos após free e estouro da stack em programas C ou C++.",
+      "Entender duração e propriedade dos dados ajuda a reconhecer vazamentos, acessos após free e estouro da stack em programas C ou C++. Uma variável local normalmente pertence ao frame de uma chamada; um bloco no heap pode sobreviver à função que o reservou. Um ponteiro guarda um endereço, sem garantir por si só que aquele objeto ainda existe. Memória virtual acrescenta outra camada: endereços do processo são traduzidos para páginas físicas, permitindo isolamento e mapeamentos independentes. A nossa grade não faz essa tradução. Experimente preencher os 32 bytes, liberar um bloco e reservar novamente: first-fit pode reutilizar a lacuna; o mesmo endereço não implica o mesmo objeto ao longo do tempo.",
     challenge:
       "Reserve quatro blocos de 8 bytes. Tente um PUSH. Libere o último bloco e tente novamente. Observe a condição de falta de espaço.",
     quiz: "Após PUSH 4, PUSH 8 e POP, qual valor permanece na stack?",
@@ -143,7 +143,7 @@ export const lessons: Record<LabId, Lesson> = {
       "O DNS resolve um nome em um endereço IP. O cliente estabelece uma conexão TCP e envia uma requisição HTTP. O servidor interpreta a requisição e devolve uma resposta com status, cabeçalhos e conteúdo.",
     deep: "SYN, SYN-ACK e ACK formam o handshake TCP. Neste modelo o ACK final carrega o GET. A resposta 200 indica sucesso; HTTP não guarda automaticamente o estado de uma sessão entre requisições. Cache DNS pode evitar uma consulta. Uma perda no SYN força espera e retransmissão, aumentando a latência sem mudar o resultado.",
     practical:
-      "A aba Network das ferramentas do navegador separa etapas como DNS, conexão e tempo até o primeiro byte. Essa decomposição ajuda a localizar lentidão.",
+      "A aba Network das ferramentas do navegador separa etapas como DNS, conexão e tempo até o primeiro byte. Essa decomposição ajuda a localizar lentidão. Com latência de 40 ms por trecho, a bancada sem cache usa seis trechos de rede mais 20 ms de processamento, totalizando 260 ms. DNS em cache dispensa dois trechos e reduz para 180 ms. Perder o primeiro SYN acrescenta o timeout didático de 1.000 ms. Esses números pertencem ao modelo: redes reais podem reutilizar conexões, usar TLS, multiplexar requisições e sofrer congestionamento. Compare a hipótese com o histórico, em vez de tomar a duração da animação como uma medição de rede.",
     challenge:
       "Compare a duração com DNS em cache e sem cache. Depois perca o primeiro SYN: por que a espera cresce mesmo sem alterar a latência?",
     quiz: "Com DNS em cache, qual etapa pode ser dispensada?",

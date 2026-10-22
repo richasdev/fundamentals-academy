@@ -12,7 +12,7 @@ export default function DevIntro({
       <div className="dev-intro-copy">
         <div className="dev-kicker">
           <span className="dev-status-dot" /> FUNDAMENTALS / INTERACTIVE CS{" "}
-          <span>v0.1</span>
+          <span>v0.2</span>
         </div>
         <div className="dev-command" aria-hidden="true">
           <span>guest@fundamentals</span> ~ $ ./explorar
@@ -42,7 +42,7 @@ export default function DevIntro({
         </p>
         <div className="dev-console-lines">
           <span>
-            <b>[ok]</b> CPU, memória e redes — laboratórios 3D
+            <b>[ok]</b> 9 trilhas. 27 aulas. 9 laboratórios 3D.
           </span>
           <span>
             <b>[ok]</b> Código aberto. Sem login. Sem paywall.

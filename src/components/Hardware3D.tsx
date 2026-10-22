@@ -25,7 +25,7 @@ type Props = (
   | { kind: "network"; state: NetworkState }
 ) & { speed?: number; paused?: boolean };
 type Vec = [number, number, number];
-class SceneBoundary extends Component<
+export class SceneBoundary extends Component<
   { children: ReactNode },
   { failed: boolean }
 > {
@@ -87,7 +87,7 @@ function Label({
     </sprite>
   );
 }
-function Part({
+export function Part({
   position,
   size,
   color,
@@ -96,6 +96,7 @@ function Part({
   onSelect,
   selected = false,
   receiving = false,
+  modelKind,
 }: {
   position: Vec;
   size: Vec;
@@ -105,10 +106,12 @@ function Part({
   onSelect: () => void;
   selected?: boolean;
   receiving?: boolean;
+  modelKind?: PartKind;
 }) {
   const [hover, setHover] = useState(false);
   const kind: PartKind =
-    label === "CPU"
+    modelKind ??
+    (label === "CPU"
       ? "cpu"
       : label === "CONTROLE"
         ? "control"
@@ -126,7 +129,7 @@ function Part({
                     ? "byte"
                     : size[0] < 0.5
                       ? "packet"
-                      : "ram";
+                      : "ram");
   return (
     <group
       position={position}
