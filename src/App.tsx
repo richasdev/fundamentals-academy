@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
 import {
+  Sun,
+  Moon,
   ArrowUpRight,
   ArrowRight,
   BookOpen,
@@ -23,6 +25,7 @@ import {
 } from "lucide-react";
 import Simulator from "./components/Simulator";
 import { lessons, modules, type LabId } from "./content/lessons";
+import { useAppearance } from "./theme";
 import { useProgress } from "./store";
 type Page = LabId | "map" | "glossary";
 const labNames: Record<LabId, string> = {
@@ -77,6 +80,7 @@ function initialPage(): Page {
     : "cpu";
 }
 export default function App() {
+  const { theme, setTheme } = useAppearance();
   const [page, setPage] = useState<Page>(initialPage),
     [query, setQuery] = useState(""),
     [menu, setMenu] = useState(false),
@@ -323,6 +327,16 @@ export default function App() {
             >
               Aprenda por dentro <ArrowUpRight size={14} />
             </a>
+            <button
+              className="theme-toggle"
+              aria-label={
+                theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"
+              }
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? <Moon size={14} /> : <Sun size={14} />}{" "}
+              {theme === "dark" ? "Escuro" : "Claro"}
+            </button>
           </header>
           <main id="main" ref={contentRef}>
             <div className="page-heading">
