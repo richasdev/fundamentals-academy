@@ -41,6 +41,9 @@
   gap: 8px;
   padding: 8px 10px;
 }
+.explore-visual-column .scene-tools button:last-child {
+  display: inline-flex;
+}
 .explore-visual-column .scene-tools > span {
   display: none;
 }

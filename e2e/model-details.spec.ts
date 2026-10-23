@@ -73,6 +73,9 @@ test("inspeção explica partes e permite abrir camadas sem mudar o resultado", 
   await page.getByRole("button", { name: "Redefinir vista" }).click();
   await expect(layers).toHaveValue("0");
   await page.getByRole("tab", { name: "CPU & execução" }).click();
+  await expect(
+    page.getByRole("button", { name: "Redefinir vista" }),
+  ).toBeVisible();
   await page.getByRole("slider", { name: "Abrir camadas internas" }).focus();
   await page
     .getByRole("slider", { name: "Abrir camadas internas" })
