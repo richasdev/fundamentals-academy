@@ -12,9 +12,7 @@ test("mapa abre as nove trilhas sem áreas em breve", async ({ page }) => {
     .getByRole("button", { name: "Explorar" })
     .click();
   await expect(page).toHaveURL(/#logic$/);
-  await expect(
-    page.getByRole("tab", { name: /^Arquitetura/ }),
-  ).toBeVisible();
+  await expect(page.getByRole("tab", { name: /^Arquitetura/ })).toBeVisible();
   await expect(page.locator("body")).toHaveJSProperty(
     "scrollWidth",
     await page.evaluate(() => innerWidth),
@@ -42,6 +40,9 @@ for (const [id, title, answer] of [
       page.getByRole("heading", { name: title, exact: true }),
     ).toBeVisible();
     await expect(page.locator(".three-scene canvas")).toBeVisible();
+    await page
+      .getByText("Inspecionar e ajustar modelo", { exact: true })
+      .click();
     await page
       .getByLabel("Inspecionar componente 3D")
       .selectOption({ index: 1 });

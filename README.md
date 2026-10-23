@@ -88,3 +88,11 @@ Na execução explicada, modelo, mensagem, explicação e navegação ficam em u
 A câmera acompanha o caminho da transferência e aproxima o receptor depois da chegada. `Acompanhar etapa` permite liberar ou reativar o acompanhamento; órbita manual interrompe o movimento corrente. Mensagens perdidas mantêm o caminho interrompido em contexto. Movimento reduzido aplica o enquadramento diretamente.
 
 `cameraFraming.ts` calcula planos respeitando campo de visão, proporção, rotação e separação das peças. `LessonCamera.tsx` interpola câmera e alvo de órbita em 650 ms, solicitando frames apenas durante a transição. Os dados, a execução e o progresso não são alterados pela câmera.
+
+## Explorar com acompanhamento
+
+Os nove experimentos usam o mesmo painel limitado à altura da janela: modelo à esquerda, explicação da etapa e controles à direita. No celular, as duas áreas ficam empilhadas dentro do painel. Parâmetros, código e estados detalhados têm rolagem interna; avançar uma etapa retorna os detalhes ao fluxo atual sem mover a página.
+
+O acompanhamento da câmera vem ativo nas bancadas livres, incluindo CPU, memória e rede. Primeiro enquadra origem, caminho e destino; após a entrega aproxima o componente receptor. Perdas mantêm o caminho interrompido. A órbita interrompe a transição atual, e `Acompanhar etapa` libera a câmera até ser reativado. A execução automática em 3D espera a entrega e reserva tempo para a aproximação antes da próxima transição; o modo 2D continua independente do renderizador.
+
+`ExploreStage.tsx` compartilha o layout e recebe o readout dos modelos clássicos. `hardwareCameraShot` trabalha com as coordenadas reais já expandidas dos fluxos e inclui pontos intermediários como a ALU. `e2e/explore-player.spec.ts` verifica as nove bancadas em desktop e celular, câmera livre, perda e autoplay.

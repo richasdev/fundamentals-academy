@@ -55,6 +55,7 @@ test("inspeção explica partes e permite abrir camadas sem mudar o resultado", 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/#database");
   await expect(page.locator(".three-scene canvas")).toBeVisible();
+  await page.getByText("Inspecionar e ajustar modelo", { exact: true }).click();
   await page.getByLabel("Inspecionar componente 3D").selectOption("b");
   const anatomy = page.getByRole("region", {
     name: "Anatomia do componente selecionado",

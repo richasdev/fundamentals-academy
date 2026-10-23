@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { PerspectiveCamera, Vector3 } from "three";
 import { labIds } from "../content/lessons";
 import { lessonFrames } from "./lessonScenes";
-import { cameraShot } from "./cameraFraming";
+import { cameraShot, hardwareCameraShot } from "./cameraFraming";
 it("enquadra as duas pontas do fluxo em proporções estreitas e largas", () => {
   for (const id of labIds)
     for (let chapter = 0; chapter < 3; chapter++)
@@ -66,4 +66,49 @@ it("perda mantém o caminho no enquadramento e inspeção escolhe apenas a peça
   );
   expect(inspection.phase).toBe("inspection");
   expect(inspection.focus).toBe("LÍDER");
+});
+
+it("enquadra rotas clássicas expandidas, incluindo ALU intermediária e perda", () => {
+  const flow = {
+    id: 1,
+    from: [-4, 0.4, -2] as [number, number, number],
+    to: [3, 0.4, 1] as [number, number, number],
+    via: [[0, 3, 0] as [number, number, number]],
+    source: "RAM",
+    target: "ACC",
+    payload: "8",
+    explanation: "Soma",
+  };
+  for (const aspect of [0.5, 1, 2])
+    for (const rotation of [0, Math.PI / 2, Math.PI]) {
+      const shot = hardwareCameraShot(flow, false, aspect, rotation);
+      const camera = new PerspectiveCamera(42, aspect, 0.1, 1000);
+      camera.position.set(...shot.position);
+      camera.lookAt(...shot.target);
+      camera.updateMatrixWorld();
+      for (const p of [flow.from, ...flow.via, flow.to]) {
+        const projected = new Vector3(
+          p[0] * Math.cos(rotation) + p[2] * Math.sin(rotation),
+          p[1],
+          p[2] * Math.cos(rotation) - p[0] * Math.sin(rotation),
+        ).project(camera);
+        expect(Math.abs(projected.x)).toBeLessThan(0.98);
+        expect(Math.abs(projected.y)).toBeLessThan(0.98);
+      }
+      const received = hardwareCameraShot(flow, true, aspect, rotation);
+      expect(received.target[0]).toBeCloseTo(
+        3 * Math.cos(rotation) + Math.sin(rotation),
+      );
+      expect(received.target[2]).toBeCloseTo(
+        Math.cos(rotation) - 3 * Math.sin(rotation),
+      );
+      const lost = hardwareCameraShot(
+        { ...flow, lost: true },
+        true,
+        aspect,
+        rotation,
+      );
+      expect(lost.phase).toBe("lost");
+      expect(lost.target).toEqual(shot.target);
+    }
 });
