@@ -1,3 +1,4 @@
+import ExploreStage from "./ExploreStage";
 import WorkshopLab from "./WorkshopLab";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
@@ -22,14 +23,16 @@ import {
 } from "../simulators/engines";
 import type { LabId, ExtendedLabId } from "../content/lessons";
 const Hardware3D = lazy(() => import("./Hardware3D"));
-function useEngine<S>(model: Model<S>) {
+function useEngine<S>(model: Model<S>, three = true) {
   const [history, setHistory] = useState<S[]>(() => [model.initial()]);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [motionPaused, setMotionPaused] = useState(false);
+  const [delivery, setDelivery] = useState<S | null>(null);
   const state = history[history.length - 1];
   const done = model.done(state);
   const step = () => {
+    setPlaying(false);
     setMotionPaused(false);
     setHistory((h) =>
       model.done(h[h.length - 1]) ? h : [...h, model.step(h[h.length - 1])],
@@ -40,18 +43,22 @@ function useEngine<S>(model: Model<S>) {
     setPlaying(false);
   }, [model]);
   useEffect(() => {
-    if (!playing || done) return;
-    const timer = window.setInterval(
+    if (!playing || done || (three && history.length > 1 && delivery !== state))
+      return;
+    // Let the camera settle on the receiver before advancing the engine.
+    const timer = window.setTimeout(
       () =>
         setHistory((h) =>
           model.done(h[h.length - 1]) ? h : [...h, model.step(h[h.length - 1])],
         ),
-      1200 / speed,
+      three && history.length > 1 ? 650 + 400 / speed : 1200 / speed,
     );
-    return () => clearInterval(timer);
-  }, [playing, done, model, speed]);
+    return () => clearTimeout(timer);
+  }, [playing, done, model, speed, three, history.length, state, delivery]);
   return {
     state,
+    onArrival: () => setDelivery(state),
+    onTransfer: () => setDelivery(null),
     history,
     playing: playing && !done,
     speed,
@@ -285,8 +292,8 @@ function CpuLab() {
   const [a, setA] = useState(5),
     [b, setB] = useState(3);
   const model = useMemo(() => cpuModel(a, b), [a, b]);
-  const e = useEngine(model);
   const [three, setThree] = useState(true);
+  const e = useEngine(model, three);
   const s = e.state;
   const active = s.cycles === 0 ? -1 : (s.phase + 2) % 3;
   return (
@@ -300,31 +307,47 @@ function CpuLab() {
           {three ? "Ver diagrama 2D" : "Explorar em 3D"}
         </button>
       </div>
-      <div className="cpu-layout">
-        <div className="visual-area">
-          {three ? (
-            <Suspense fallback={<p>Carregando cena…</p>}>
-              <Hardware3D
-                kind="cpu"
-                state={s}
-                speed={e.speed}
-                paused={e.motionPaused}
-              />
-            </Suspense>
-          ) : (
-            <CpuDiagram s={s} />
-          )}
-          <div className="phase-track">
-            {["Fetch", "Decode", "Execute"].map((p, i) => (
-              <div key={p} className={active === i ? "active" : ""}>
-                <span>0{i + 1}</span>
-                {p}
-                <small>{["Buscar", "Decodificar", "Executar"][i]}</small>
-                {i < 2 && <ArrowRight size={14} />}
-              </div>
-            ))}
+      <ExploreStage
+        stepKey={s.cycles}
+        scene={
+          <>
+            {three ? (
+              <Suspense fallback={<p>Carregando cena…</p>}>
+                <Hardware3D
+                  kind="cpu"
+                  state={s}
+                  speed={e.speed}
+                  paused={e.motionPaused}
+                  onArrival={e.onArrival}
+                  onTransfer={e.onTransfer}
+                />
+              </Suspense>
+            ) : (
+              <CpuDiagram s={s} />
+            )}
+            <div className="phase-track">
+              {["Fetch", "Decode", "Execute"].map((p, i) => (
+                <div key={p} className={active === i ? "active" : ""}>
+                  <span>0{i + 1}</span>
+                  {p}
+                  <small>{["Buscar", "Decodificar", "Executar"][i]}</small>
+                  {i < 2 && <ArrowRight size={14} />}
+                </div>
+              ))}
+            </div>
+          </>
+        }
+        explanation={
+          <div className="status-bar" role="status">
+            <span className="status-index">
+              {String(s.cycles).padStart(2, "0")}
+            </span>
+            {s.log}
+            <span className="cycle-count">{s.cycles} ciclos</span>
           </div>
-        </div>
+        }
+        controls={<Controls engine={e} />}
+      >
         <aside className="code-panel">
           <div className="panel-label">
             PROGRAMA <span>assembly didático</span>
@@ -375,15 +398,7 @@ function CpuLab() {
             <small>{s.acc.toString(2).padStart(8, "0")}₂</small>
           </div>
         </aside>
-      </div>
-      <div className="status-bar" role="status">
-        <span className="status-index">
-          {String(s.cycles).padStart(2, "0")}
-        </span>
-        {s.log}
-        <span className="cycle-count">{s.cycles} ciclos</span>
-      </div>
-      <Controls engine={e} />
+      </ExploreStage>
       <details className="history">
         <summary>
           Histórico de execução · {e.history.length - 1} transições
@@ -415,76 +430,92 @@ function MemoryLab() {
           {three ? "Ver mapa 2D" : "Explorar em 3D"}
         </button>
       </div>
-      {three && (
-        <Suspense fallback={<p>Preparando a bancada…</p>}>
-          <Hardware3D kind="memory" state={s} />
-        </Suspense>
-      )}
-      <div className="memory-content">
-        <div className="memory-legend">
-          <span>
-            <i className="heap-key" /> Heap
-          </span>
-          <span>
-            <i className="stack-key" /> Stack
-          </span>
-          <span>□ Livre</span>
-        </div>
-        <div className="memory-grid" hidden={three}>
-          {Array.from({ length: 32 }, (_, i) => {
-            const block = s.blocks.find(
-              (b) => i >= b.address && i < b.address + b.size,
-            );
-            const stack = i >= 32 - s.stack.length;
-            return (
-              <div
-                key={i}
-                className={block ? "heap-cell" : stack ? "stack-cell" : ""}
-              >
-                <small>0x{i.toString(16).padStart(2, "0")}</small>
-                <strong>{stack ? s.stack[31 - i] : block ? "■" : "·"}</strong>
-                <span>{stack ? "stack" : block ? "heap" : "livre"}</span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="allocation-controls">
-          <label>
-            Tamanho / valor{" "}
-            <input
-              aria-label="Tamanho ou valor"
-              type="number"
-              min="1"
-              max="8"
-              value={size}
-              onChange={(e) =>
-                setSize(Math.max(1, Math.min(8, Number(e.target.value))))
+      <ExploreStage
+        stepKey={s.operations}
+        scene={
+          <>
+            {three && (
+              <Suspense fallback={<p>Preparando a bancada…</p>}>
+                <Hardware3D kind="memory" state={s} />
+              </Suspense>
+            )}
+            <div className="memory-grid" hidden={three}>
+              {Array.from({ length: 32 }, (_, i) => {
+                const block = s.blocks.find(
+                  (b) => i >= b.address && i < b.address + b.size,
+                );
+                const stack = i >= 32 - s.stack.length;
+                return (
+                  <div
+                    key={i}
+                    className={block ? "heap-cell" : stack ? "stack-cell" : ""}
+                  >
+                    <small>0x{i.toString(16).padStart(2, "0")}</small>
+                    <strong>
+                      {stack ? s.stack[31 - i] : block ? "■" : "·"}
+                    </strong>
+                    <span>{stack ? "stack" : block ? "heap" : "livre"}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        }
+        explanation={
+          <div className="status-bar" role="status">
+            {s.log}
+          </div>
+        }
+        controls={
+          <div className="transport">
+            <button
+              onClick={() =>
+                setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h))
               }
-            />
-          </label>
-          <button onClick={() => act("alloc")}>malloc({size})</button>
-          <button onClick={() => act("free")}>free(último)</button>
-          <button onClick={() => act("push")}>PUSH {size}</button>
-          <button onClick={() => act("pop")}>POP</button>
+              disabled={history.length < 2}
+            >
+              <Undo2 size={15} /> Voltar
+            </button>
+            <button onClick={() => setHistory([initialMemory()])}>
+              <RotateCcw size={15} /> Reiniciar
+            </button>
+            <span>
+              {32 - occupied} bytes livres · {s.operations} operações
+            </span>
+          </div>
+        }
+      >
+        <div className="memory-content">
+          <div className="memory-legend">
+            <span>
+              <i className="heap-key" /> Heap
+            </span>
+            <span>
+              <i className="stack-key" /> Stack
+            </span>
+            <span>□ Livre</span>
+          </div>
+          <div className="allocation-controls">
+            <label>
+              Tamanho / valor{" "}
+              <input
+                aria-label="Tamanho ou valor"
+                type="number"
+                min="1"
+                max="8"
+                value={size}
+                onChange={(e) =>
+                  setSize(Math.max(1, Math.min(8, Number(e.target.value))))
+                }
+              />
+            </label>
+            <button onClick={() => act("alloc")}>malloc({size})</button>
+            <button onClick={() => act("free")}>free(último)</button>
+            <button onClick={() => act("push")}>PUSH {size}</button>
+            <button onClick={() => act("pop")}>POP</button>
+          </div>
         </div>
-      </div>
-      <div className="status-bar" role="status">
-        {s.log}
-      </div>
-      <div className="transport">
-        <button
-          onClick={() => setHistory((h) => (h.length > 1 ? h.slice(0, -1) : h))}
-          disabled={history.length < 2}
-        >
-          <Undo2 size={15} /> Voltar
-        </button>
-        <button onClick={() => setHistory([initialMemory()])}>
-          <RotateCcw size={15} /> Reiniciar
-        </button>
-        <span>
-          {32 - occupied} bytes livres · {s.operations} operações
-        </span>
-      </div>
+      </ExploreStage>
       <details className="history">
         <summary>Histórico de alocações</summary>
         {history.slice(1).map((h, i) => (
@@ -503,7 +534,7 @@ function NetworkLab() {
     () => networkModel(latency, cached, loss),
     [latency, cached, loss],
   );
-  const e = useEngine<NetworkState>(model);
+  const e = useEngine<NetworkState>(model, three);
   const s = e.state;
   return (
     <>
@@ -515,86 +546,102 @@ function NetworkLab() {
           {three ? "Ver diagrama 2D" : "Explorar em 3D"}
         </button>
       </div>
-      {three && (
-        <Suspense fallback={<p>Preparando a bancada…</p>}>
-          <Hardware3D
-            kind="network"
-            state={s}
-            speed={e.speed}
-            paused={e.motionPaused}
-          />
-        </Suspense>
-      )}
-      <div className="network-content">
-        <div className="network-nodes" hidden={three}>
-          {["Seu navegador", "Resolvedor DNS", "Servidor HTTP"].map((n, i) => (
-            <div
-              key={n}
-              className={
-                (s.stage < 2 && i === 1) || (s.stage >= 2 && i === 2)
-                  ? "node-active"
-                  : ""
-              }
-            >
-              <span className="node-icon">{["⌘", "◎", "▤"][i]}</span>
-              <strong>{n}</strong>
-              <small>{["cliente", "192.0.2.53", "192.0.2.10"][i]}</small>
+      <ExploreStage
+        stepKey={s.elapsed}
+        scene={
+          <>
+            {three && (
+              <Suspense fallback={<p>Preparando a bancada…</p>}>
+                <Hardware3D
+                  kind="network"
+                  state={s}
+                  speed={e.speed}
+                  paused={e.motionPaused}
+                  onArrival={e.onArrival}
+                  onTransfer={e.onTransfer}
+                />
+              </Suspense>
+            )}
+            <div className="network-nodes" hidden={three}>
+              {["Seu navegador", "Resolvedor DNS", "Servidor HTTP"].map(
+                (n, i) => (
+                  <div
+                    key={n}
+                    className={
+                      (s.stage < 2 && i === 1) || (s.stage >= 2 && i === 2)
+                        ? "node-active"
+                        : ""
+                    }
+                  >
+                    <span className="node-icon">{["⌘", "◎", "▤"][i]}</span>
+                    <strong>{n}</strong>
+                    <small>{["cliente", "192.0.2.53", "192.0.2.10"][i]}</small>
+                  </div>
+                ),
+              )}
             </div>
-          ))}
+          </>
+        }
+        explanation={
+          <div className="status-bar" role="status">
+            {s.log}
+            <span className="cycle-count">
+              {s.status} · {s.elapsed} ms
+            </span>
+          </div>
+        }
+        controls={<Controls engine={e} />}
+      >
+        <div className="network-content">
+          <div className="network-steps">
+            {networkLabels.map((l, i) => (
+              <div
+                key={l}
+                className={
+                  s.stage > i ? "finished" : s.stage === i ? "next" : ""
+                }
+              >
+                <span>{s.stage > i ? "✓" : i + 1}</span>
+                {l}
+                {cached && i < 2 && <small>cache</small>}
+              </div>
+            ))}
+          </div>
+          <div className="network-options">
+            <label>
+              Latência por trecho: {latency} ms
+              <input
+                type="range"
+                min="10"
+                max="200"
+                step="10"
+                value={latency}
+                onChange={(e) => setLatency(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={cached}
+                onChange={(e) => setCached(e.target.checked)}
+              />{" "}
+              DNS em cache
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={loss}
+                onChange={(e) => setLoss(e.target.checked)}
+              />{" "}
+              Perder o primeiro SYN
+            </label>
+          </div>
+          <p className="hint">
+            Alterar parâmetros reinicia a requisição. Nenhum pacote real é
+            enviado.
+          </p>
         </div>
-        <div className="network-steps">
-          {networkLabels.map((l, i) => (
-            <div
-              key={l}
-              className={s.stage > i ? "finished" : s.stage === i ? "next" : ""}
-            >
-              <span>{s.stage > i ? "✓" : i + 1}</span>
-              {l}
-              {cached && i < 2 && <small>cache</small>}
-            </div>
-          ))}
-        </div>
-        <div className="network-options">
-          <label>
-            Latência por trecho: {latency} ms
-            <input
-              type="range"
-              min="10"
-              max="200"
-              step="10"
-              value={latency}
-              onChange={(e) => setLatency(Number(e.target.value))}
-            />
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={cached}
-              onChange={(e) => setCached(e.target.checked)}
-            />{" "}
-            DNS em cache
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={loss}
-              onChange={(e) => setLoss(e.target.checked)}
-            />{" "}
-            Perder o primeiro SYN
-          </label>
-        </div>
-        <p className="hint">
-          Alterar parâmetros reinicia a requisição. Nenhum pacote real é
-          enviado.
-        </p>
-      </div>
-      <div className="status-bar" role="status">
-        {s.log}
-        <span className="cycle-count">
-          {s.status} · {s.elapsed} ms
-        </span>
-      </div>
-      <Controls engine={e} />
+      </ExploreStage>
       <details className="history">
         <summary>Histórico da requisição</summary>
         {e.history.slice(1).map((h, i) => (

@@ -1,3 +1,8 @@
+import { createPortal } from "react-dom";
+import { ExploreReadout } from "./ExploreStage";
+import LessonCamera, { type OrbitHandle } from "./LessonCamera";
+import { hardwareCameraShot } from "../simulators/cameraFraming";
+import type { FlowEvent } from "../simulators/flows";
 import {
   Component,
   createContext,
@@ -5,6 +10,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
   type ReactNode,
 } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
@@ -35,7 +41,12 @@ type Props = (
   | { kind: "cpu"; state: CpuState }
   | { kind: "memory"; state: MemoryState }
   | { kind: "network"; state: NetworkState }
-) & { speed?: number; paused?: boolean };
+) & {
+  speed?: number;
+  paused?: boolean;
+  onArrival?: () => void;
+  onTransfer?: () => void;
+};
 type Vec = [number, number, number];
 export class SceneBoundary extends Component<
   { children: ReactNode },
@@ -255,19 +266,54 @@ function StaticShadows({ revision }: { revision: string }) {
   }, [gl, revision, invalidate]);
   return null;
 }
-function FitCamera({ resetKey }: { resetKey: number }) {
-  const { camera, size, invalidate } = useThree();
-  useEffect(() => {
-    const factor = size.width / size.height < 1.1 ? 1.55 : 1;
-    camera.position.set(6 * factor, 6 * factor, 8 * factor);
-    camera.lookAt(0, 0, 0);
-    camera.updateProjectionMatrix();
-    invalidate();
-  }, [camera, size.width, size.height, invalidate, resetKey]);
-  return null;
+function HardwareCamera({
+  flow,
+  arrived,
+  rotation,
+  following,
+  command,
+  controls,
+  cancel,
+  onSettled,
+}: {
+  flow: FlowEvent | null;
+  arrived: boolean;
+  rotation: number;
+  following: boolean;
+  command: number;
+  controls: React.RefObject<OrbitHandle | null>;
+  cancel: React.RefObject<(() => void) | null>;
+  onSettled: (key: string, target: number[]) => void;
+}) {
+  const { size } = useThree();
+  const shot = hardwareCameraShot(
+    following ? flow : null,
+    arrived,
+    size.width / size.height,
+    rotation,
+  );
+  return (
+    <LessonCamera
+      shot={shot}
+      controls={controls}
+      following={following}
+      command={command}
+      cancel={cancel}
+      onSettled={onSettled}
+    />
+  );
 }
 export default function Hardware3D(props: Props) {
   const { theme } = useAppearance();
+  const readoutTarget = useContext(ExploreReadout);
+  const controls = useRef<OrbitHandle | null>(null),
+    cancel = useRef<(() => void) | null>(null);
+  const [following, setFollowing] = useState(true);
+  const [cameraReport, setCameraReport] = useState<{
+    key: string;
+    target: number[];
+  }>();
+  const plan = cameraReport ? JSON.parse(cameraReport.key) : undefined;
   const [selected, setSelected] = useState(""),
     [spread, setSpread] = useState(0.25),
     [rotation, setRotation] = useState(0),
@@ -289,6 +335,9 @@ export default function Hardware3D(props: Props) {
   const [arrivalKey, setArrivalKey] = useState("");
   const flowKey = `${props.kind}-${flow?.id}-${flow?.payload}-${replay}`;
   const arrived = arrivalKey === flowKey;
+  useEffect(() => {
+    props.onTransfer?.();
+  }, [flowKey]);
   const anatomyKind: PartKind =
     props.kind === "cpu"
       ? selected.startsWith("RAM")
@@ -338,8 +387,54 @@ export default function Hardware3D(props: Props) {
                   : "livre")
             );
           });
+  const readout = flow ? (
+    <div className="flow-readout" aria-live="polite">
+      <span>FLUXO DESTA ETAPA</span>
+      <strong>
+        <span>{flow.source}</span> → <span>{flow.target}</span>
+      </strong>
+      <code>{flow.payload}</code>
+      <div
+        className={`flow-delivery ${arrived ? (flow.lost ? "lost" : "received") : "transit"}`}
+        role="status"
+      >
+        {arrived
+          ? flow.lost
+            ? "× Perdido no caminho · nenhum componente recebeu"
+            : `✓ ${flow.target} recebeu: ${flow.payload}`
+          : `● Em trânsito: ${flow.source} → ${flow.target}`}
+      </div>
+      <p>{flow.explanation}</p>
+      <button onClick={() => setReplay((r) => r + 1)} disabled={props.paused}>
+        ↺ Rever fluxo
+      </button>
+    </div>
+  ) : null;
   return (
-    <div className="hardware-viewport">
+    <div
+      className="hardware-viewport"
+      data-camera-follow={following}
+      data-camera-focus={plan?.focus}
+      data-camera-phase={plan?.phase}
+      data-camera-target={cameraReport?.target.join(",")}
+    >
+      <div
+        className="scene-camera-toolbar"
+        role="group"
+        aria-label="Câmera do modelo"
+      >
+        <button
+          aria-pressed={following}
+          onClick={() => setFollowing((v) => !v)}
+        >
+          Acompanhar etapa
+        </button>
+        <span>
+          {following
+            ? `Foco: ${plan?.focus || "Bancada completa"}`
+            : "Câmera livre"}
+        </span>
+      </div>
       <div className={`three-scene scene-${props.kind}`}>
         <SceneBoundary>
           <Canvas
@@ -356,7 +451,16 @@ export default function Hardware3D(props: Props) {
               fov: 42,
             }}
           >
-            <FitCamera resetKey={cameraKey} />
+            <HardwareCamera
+              flow={flow}
+              arrived={arrived}
+              rotation={rotation}
+              following={following}
+              command={cameraKey}
+              controls={controls}
+              cancel={cancel}
+              onSettled={(key, target) => setCameraReport({ key, target })}
+            />
             <StaticShadows
               revision={`${rotation}-${spread}-${layers}-${flow?.id ?? 0}`}
             />
@@ -412,7 +516,10 @@ export default function Hardware3D(props: Props) {
                     event={flow}
                     speed={props.speed}
                     paused={props.paused}
-                    onArrival={() => setArrivalKey(flowKey)}
+                    onArrival={() => {
+                      setArrivalKey(flowKey);
+                      props.onArrival?.();
+                    }}
                   />
                 )}
                 <mesh position={[0, -0.5, 0]} castShadow receiveShadow>
@@ -734,120 +841,101 @@ export default function Hardware3D(props: Props) {
               position={[0, -0.58, 0]}
             />
             <OrbitControls
-              key={cameraKey}
+              ref={controls}
+              onStart={() => cancel.current?.()}
+              enableDamping={false}
               enablePan
-              minDistance={5}
-              maxDistance={18}
+              minDistance={2.5}
+              maxDistance={60}
               maxPolarAngle={Math.PI / 2.06}
               makeDefault
             />
           </Canvas>
         </SceneBoundary>
-        {flow && (
-          <div className="flow-readout" aria-live="polite">
-            <span>FLUXO DESTA ETAPA</span>
-            <strong>
-              <span>{flow.source}</span> → <span>{flow.target}</span>
-            </strong>
-            <code>{flow.payload}</code>
-            <div
-              className={`flow-delivery ${arrived ? (flow.lost ? "lost" : "received") : "transit"}`}
-              role="status"
-            >
-              {arrived
-                ? flow.lost
-                  ? "× Perdido no caminho · nenhum componente recebeu"
-                  : `✓ ${flow.target} recebeu: ${flow.payload}`
-                : `● Em trânsito: ${flow.source} → ${flow.target}`}
-            </div>
-            <p>{flow.explanation}</p>
-            <button
-              onClick={() => setReplay((r) => r + 1)}
-              disabled={props.paused}
-            >
-              ↺ Rever fluxo
-            </button>
-          </div>
-        )}
+        {readout &&
+          (readoutTarget ? createPortal(readout, readoutTarget) : readout)}
         <div className="scene-inspector" aria-live="polite">
           {selected || "Selecione uma peça para investigar o que ela faz."}
         </div>
       </div>
-      <div className="scene-tools">
-        <select
-          aria-label="Inspecionar componente 3D"
-          value={inspectOptions.includes(selected) ? selected : ""}
-          onChange={(e) => choose(e.target.value)}
-        >
-          <option value="">Inspecionar peça…</option>
-          {inspectOptions.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
-        <span>ARRASTE PARA ORBITAR · ROLE PARA ZOOM</span>
-        <label>
-          {props.kind === "cpu" ? "Vista explodida" : "Separar componentes"}
-          <input
-            aria-label="Separar componentes 3D"
-            type="range"
-            min="0"
-            max="1"
-            step=".05"
-            value={spread}
-            onChange={(e) => setSpread(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          Abrir camadas internas
-          <input
-            aria-label="Abrir camadas internas"
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            value={layers}
-            onChange={(e) => setLayers(Number(e.target.value))}
-          />
-        </label>
-        <button
-          onClick={() => setRotation((r) => r - 0.3)}
-          aria-label="Girar cena para a esquerda"
-        >
-          ↶
-        </button>
-        <button
-          onClick={() => setRotation((r) => r + 0.3)}
-          aria-label="Girar cena para a direita"
-        >
-          ↷
-        </button>
-        <button
-          onClick={() => {
-            setRotation(0);
-            setLayers(0);
-            setCameraKey((k) => k + 1);
-          }}
-        >
-          Redefinir vista
-        </button>
+      <div className="explore-model-tools">
+        <div className="scene-tools">
+          <select
+            aria-label="Inspecionar componente 3D"
+            value={inspectOptions.includes(selected) ? selected : ""}
+            onChange={(e) => choose(e.target.value)}
+          >
+            <option value="">Inspecionar peça…</option>
+            {inspectOptions.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+          <span>ARRASTE PARA ORBITAR · ROLE PARA ZOOM</span>
+          <label>
+            {props.kind === "cpu" ? "Vista explodida" : "Separar componentes"}
+            <input
+              aria-label="Separar componentes 3D"
+              type="range"
+              min="0"
+              max="1"
+              step=".05"
+              value={spread}
+              onChange={(e) => setSpread(Number(e.target.value))}
+            />
+          </label>
+          <label>
+            Abrir camadas internas
+            <input
+              aria-label="Abrir camadas internas"
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={layers}
+              onChange={(e) => setLayers(Number(e.target.value))}
+            />
+          </label>
+          <button
+            onClick={() => setRotation((r) => r - 0.3)}
+            aria-label="Girar cena para a esquerda"
+          >
+            ↶
+          </button>
+          <button
+            onClick={() => setRotation((r) => r + 0.3)}
+            aria-label="Girar cena para a direita"
+          >
+            ↷
+          </button>
+          <button
+            onClick={() => {
+              setRotation(0);
+              setLayers(0);
+              setFollowing(true);
+              setCameraKey((k) => k + 1);
+            }}
+          >
+            Redefinir vista
+          </button>
+        </div>
+        <details className="component-anatomy">
+          <summary>Entenda as partes do modelo</summary>
+          <h4>{anatomy.name}</h4>
+          <dl>
+            {anatomy.parts.map(([name, text], i) => (
+              <div key={name}>
+                <dt>
+                  <span>0{i + 1}</span> {name}
+                </dt>
+                <dd>{text}</dd>
+              </div>
+            ))}
+          </dl>
+          <p>{anatomy.note}</p>
+        </details>
       </div>
-      <details className="component-anatomy">
-        <summary>Entenda as partes do modelo</summary>
-        <h4>{anatomy.name}</h4>
-        <dl>
-          {anatomy.parts.map(([name, text], i) => (
-            <div key={name}>
-              <dt>
-                <span>0{i + 1}</span> {name}
-              </dt>
-              <dd>{text}</dd>
-            </div>
-          ))}
-        </dl>
-        <p>{anatomy.note}</p>
-      </details>
     </div>
   );
 }

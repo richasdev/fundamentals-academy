@@ -94,3 +94,39 @@ export function cameraShot(
     0.65,
   );
 }
+
+// Classic benches already supply expanded model coordinates in their flow.
+export function hardwareCameraShot(
+  flow: FlowEvent | null,
+  received: boolean,
+  aspect: number,
+  rotation: number,
+): CameraShot {
+  const world = (p: Vec3): Vec3 => [
+    p[0] * Math.cos(rotation) + p[2] * Math.sin(rotation),
+    p[1],
+    p[2] * Math.cos(rotation) - p[0] * Math.sin(rotation),
+  ];
+  if (!flow)
+    return fitCamera(
+      [world([-4, 0, -3]), world([4, 2, 3])],
+      aspect,
+      "Bancada completa",
+      "overview",
+    );
+  if (received && !flow.lost)
+    return fitCamera([world(flow.to)], aspect, flow.target, "received", 0.45);
+  const points = [flow.from, ...(flow.via || []), flow.to].map(world);
+  const peak: Vec3 = [
+    (points[0][0] + points.at(-1)![0]) / 2,
+    Math.max(...points.map((p) => p[1])) + 1.6,
+    (points[0][2] + points.at(-1)![2]) / 2,
+  ];
+  return fitCamera(
+    [...points, peak],
+    aspect,
+    received && flow.lost ? "Caminho interrompido" : flow.target,
+    received && flow.lost ? "lost" : "transfer",
+    0.65,
+  );
+}
