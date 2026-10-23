@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import {
   Environment,
@@ -13,27 +13,51 @@ import DataFlow from "./DataFlow";
 import type { WorkshopNode, WorkshopStep } from "../simulators/workshops";
 import { useAppearance } from "../theme";
 import { nodeModel, modelAnatomy } from "./modelAnatomy";
-function Camera({
-  resetKey,
-  target,
+import LessonCamera, { type OrbitHandle } from "./LessonCamera";
+import { cameraShot } from "../simulators/cameraFraming";
+function InspectionPanel({
+  compact,
+  children,
 }: {
-  resetKey: number;
-  target: [number, number, number];
+  compact: boolean;
+  children: ReactNode;
 }) {
-  const { camera, size, invalidate } = useThree();
-  useEffect(() => {
-    const k = size.width / size.height < 1.15 ? 1.5 : 1;
-    const close = target.some((v) => v !== 0);
-    camera.position.set(
-      target[0] + (close ? 2.8 : 5) * k,
-      target[1] + (close ? 2.8 : 6) * k,
-      target[2] + (close ? 4 : 9) * k,
-    );
-    camera.lookAt(...target);
-    camera.updateProjectionMatrix();
-    invalidate();
-  }, [camera, size.width, size.height, invalidate, resetKey, target]);
-  return null;
+  return compact ? (
+    <details className="scene-inspection-controls">
+      <summary>Inspecionar e ajustar modelo</summary>
+      {children}
+    </details>
+  ) : (
+    <>{children}</>
+  );
+}
+function CameraRig({
+  nodes,
+  flow,
+  arrived,
+  spread,
+  rotation,
+  inspection,
+  ...props
+}: {
+  nodes: WorkshopNode[];
+  flow: WorkshopStep["flow"];
+  arrived: boolean;
+  spread: number;
+  rotation: number;
+  inspection: string;
+} & Omit<Parameters<typeof LessonCamera>[0], "shot">) {
+  const { size } = useThree();
+  const shot = cameraShot(
+    nodes,
+    props.following ? flow : undefined,
+    arrived,
+    size.width / Math.max(1, size.height),
+    spread,
+    rotation,
+    inspection,
+  );
+  return <LessonCamera {...props} shot={shot} />;
 }
 export default function Workshop3D({
   nodes,
@@ -45,6 +69,8 @@ export default function Workshop3D({
   arrived,
   focus = [],
   controlledProgress,
+  autoCamera = false,
+  compact = false,
 }: {
   nodes: WorkshopNode[];
   step: WorkshopStep;
@@ -55,6 +81,8 @@ export default function Workshop3D({
   arrived: boolean;
   focus?: string[];
   controlledProgress?: number;
+  autoCamera?: boolean;
+  compact?: boolean;
 }) {
   const { theme } = useAppearance();
   const [rotation, setRotation] = useState(0),
@@ -65,22 +93,14 @@ export default function Workshop3D({
   const [explode, setExplode] = useState(0);
   const selectedNode = nodes.find((n) => n.id === selected);
   const anatomy = selectedNode ? modelAnatomy[nodeModel(selectedNode)] : null;
-  const view = nodes.find((n) => n.id === viewNode);
-  const tx = (view?.position[0] || 0) * spread,
-    tz = (view?.position[2] || 0) * spread;
-  const targetKey = JSON.stringify(
-    view
-      ? [
-          tx * Math.cos(rotation) + tz * Math.sin(rotation),
-          view.kind === "server" ? 0.7 : 0.2,
-          tz * Math.cos(rotation) - tx * Math.sin(rotation),
-        ]
-      : [0, 0, 0],
-  );
-  const target = useMemo<[number, number, number]>(
-    () => JSON.parse(targetKey),
-    [targetKey],
-  );
+  const [following, setFollowing] = useState(autoCamera);
+  const controls = useRef<OrbitHandle>(null),
+    cancel = useRef<(() => void) | null>(null);
+  const [cameraReport, setCameraReport] = useState<{
+    focus: string;
+    phase: string;
+    target: number[];
+  } | null>(null);
   // A vista explodida desloca nós e os pontos do fluxo juntos.
   const spatialNodes = nodes.map((n) => ({
     ...n,
@@ -106,7 +126,30 @@ export default function Workshop3D({
   // Stable event identity avoids restarting animations when a receiver changes color.
   const flowSignature = JSON.stringify(flow);
   return (
-    <div className="workshop-viewport">
+    <div
+      className={`workshop-viewport ${compact ? "compact-workshop" : ""}`}
+      data-camera-follow={following}
+      data-camera-focus={cameraReport?.focus}
+      data-camera-phase={cameraReport?.phase}
+      data-camera-target={cameraReport?.target.join(",")}
+    >
+      <div
+        className="scene-camera-toolbar"
+        role="group"
+        aria-label="Câmera do modelo"
+      >
+        <button
+          aria-pressed={following}
+          onClick={() => setFollowing((v) => !v)}
+        >
+          Acompanhar etapa
+        </button>
+        <span>
+          {following
+            ? `Foco: ${step.flow?.lost ? "caminho da mensagem" : step.flow?.target || "bancada"}`
+            : "Câmera livre"}
+        </span>
+      </div>
       <div className="three-scene workshop-scene">
         <SceneBoundary>
           <Canvas
@@ -115,7 +158,26 @@ export default function Workshop3D({
             shadows
             camera={{ position: [5, 6, 9], fov: 42 }}
           >
-            <Camera resetKey={cameraKey} target={target} />
+            <CameraRig
+              nodes={nodes}
+              flow={step.flow}
+              arrived={arrived}
+              spread={spread}
+              rotation={rotation}
+              inspection={following ? "" : viewNode}
+              controls={controls}
+              following={following}
+              command={cameraKey}
+              cancel={cancel}
+              onSettled={(key, target) => {
+                const shot = JSON.parse(key);
+                setCameraReport({
+                  focus: shot.focus,
+                  phase: shot.phase,
+                  target,
+                });
+              }}
+            />
             <color
               attach="background"
               args={[theme === "dark" ? "#171b19" : "#f5f5f3"]}
@@ -233,111 +295,115 @@ export default function Workshop3D({
               position={[0, -0.58, 0]}
             />
             <OrbitControls
-              key={cameraKey}
+              ref={controls}
+              onStart={() => cancel.current?.()}
               makeDefault
               enableDamping={false}
-              minDistance={4}
-              maxDistance={24}
+              minDistance={2.5}
+              maxDistance={60}
               maxPolarAngle={Math.PI / 2.08}
-              target={target}
             />
           </Canvas>
         </SceneBoundary>
       </div>
-      <div className="scene-tools">
-        <select
-          aria-label="Inspecionar componente 3D"
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-        >
-          <option value="">Inspecionar peça…</option>
-          {nodes.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.label}
-            </option>
-          ))}
-        </select>
-        <button
-          disabled={!selectedNode}
-          onClick={() => {
-            setViewNode(selected);
-            setCameraKey((k) => k + 1);
-          }}
-        >
-          Enquadrar componente
-        </button>
-        <label>
-          Abrir camadas
-          <input
-            aria-label="Abrir camadas do componente"
-            type="range"
-            disabled={!selectedNode}
-            min="0"
-            max="1"
-            step="0.1"
-            value={explode}
-            onChange={(e) => setExplode(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          Separar componentes{" "}
-          <input
-            aria-label="Separar componentes 3D"
-            type="range"
-            min="0.85"
-            max="1.2"
-            step="0.05"
-            value={spread}
-            onChange={(e) => setSpread(Number(e.target.value))}
-          />
-        </label>
-        <button
-          aria-label="Girar cena para a esquerda"
-          onClick={() => setRotation((r) => r - 0.3)}
-        >
-          ↶
-        </button>
-        <button
-          aria-label="Girar cena para a direita"
-          onClick={() => setRotation((r) => r + 0.3)}
-        >
-          ↷
-        </button>
-        <button
-          onClick={() => {
-            setRotation(0);
-            setSpread(1);
-            setViewNode("");
-            setExplode(0);
-            setCameraKey((k) => k + 1);
-          }}
-        >
-          Redefinir vista
-        </button>
-      </div>
-      {selectedNode && anatomy && (
-        <section
-          className="component-anatomy"
-          aria-label="Anatomia do componente selecionado"
-        >
-          <div className="scene-inspector" aria-live="polite">
-            <strong>{selectedNode.label}</strong>
-            <p>{selectedNode.detail}</p>
-          </div>
-          <h4>{anatomy.name}</h4>
-          <dl>
-            {anatomy.parts.map(([name, text], i) => (
-              <div key={name}>
-                <dt>
-                  <span>0{i + 1}</span> {name}
-                </dt>
-                <dd>{text}</dd>
-              </div>
+      <InspectionPanel compact={compact}>
+        <div className="scene-tools">
+          <select
+            aria-label="Inspecionar componente 3D"
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+          >
+            <option value="">Inspecionar peça…</option>
+            {nodes.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.label}
+              </option>
             ))}
-          </dl>
-          <p>{anatomy.note}</p>
-        </section>
-      )}
+          </select>
+          <button
+            disabled={!selectedNode}
+            onClick={() => {
+              setFollowing(false);
+              setViewNode(selected);
+              setCameraKey((k) => k + 1);
+            }}
+          >
+            Enquadrar componente
+          </button>
+          <label>
+            Abrir camadas
+            <input
+              aria-label="Abrir camadas do componente"
+              type="range"
+              disabled={!selectedNode}
+              min="0"
+              max="1"
+              step="0.1"
+              value={explode}
+              onChange={(e) => setExplode(Number(e.target.value))}
+            />
+          </label>
+          <label>
+            Separar componentes{" "}
+            <input
+              aria-label="Separar componentes 3D"
+              type="range"
+              min="0.85"
+              max="1.2"
+              step="0.05"
+              value={spread}
+              onChange={(e) => setSpread(Number(e.target.value))}
+            />
+          </label>
+          <button
+            aria-label="Girar cena para a esquerda"
+            onClick={() => setRotation((r) => r - 0.3)}
+          >
+            ↶
+          </button>
+          <button
+            aria-label="Girar cena para a direita"
+            onClick={() => setRotation((r) => r + 0.3)}
+          >
+            ↷
+          </button>
+          <button
+            onClick={() => {
+              setRotation(0);
+              setSpread(1);
+              setFollowing(autoCamera);
+              setViewNode("");
+              setExplode(0);
+              setCameraKey((k) => k + 1);
+            }}
+          >
+            Redefinir vista
+          </button>
+        </div>
+        {selectedNode && anatomy && (
+          <section
+            className="component-anatomy"
+            aria-label="Anatomia do componente selecionado"
+          >
+            <div className="scene-inspector" aria-live="polite">
+              <strong>{selectedNode.label}</strong>
+              <p>{selectedNode.detail}</p>
+            </div>
+            <h4>{anatomy.name}</h4>
+            <dl>
+              {anatomy.parts.map(([name, text], i) => (
+                <div key={name}>
+                  <dt>
+                    <span>0{i + 1}</span> {name}
+                  </dt>
+                  <dd>{text}</dd>
+                </div>
+              ))}
+            </dl>
+            <p>{anatomy.note}</p>
+          </section>
+        )}
+      </InspectionPanel>
     </div>
   );
 }

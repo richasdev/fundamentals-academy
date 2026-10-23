@@ -1,0 +1,238 @@
+/* Keep scene, narration and step controls in one viewport-sized study surface. */
+.guided-walkthrough {
+  padding: 0;
+  background: var(--tone-ffffff);
+}
+.guided-walkthrough > h4 {
+  padding: 16px 18px;
+  margin: 0;
+}
+.guided-walkthrough .synchronized-lesson {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
+  margin: 0;
+  height: min(760px, calc(100svh - 32px));
+  min-height: 440px;
+}
+.lesson-visual-column,
+.lesson-explanation-column {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.lesson-explanation-column {
+  border-left: 1px solid var(--line);
+}
+.lesson-model-host {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.lesson-model-host > .workshop-viewport {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.lesson-model-host .workshop-scene {
+  height: auto;
+  flex: 1;
+  min-height: 0;
+}
+.scene-camera-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  font: 9px/1.7 var(--mono);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  min-width: 0;
+  background: var(--tone-ffffff);
+}
+.scene-camera-toolbar button {
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  flex-shrink: 0;
+}
+.scene-camera-toolbar button[aria-pressed="true"] {
+  border-color: var(--dev-accent);
+  color: var(--dev-accent);
+}
+.scene-camera-toolbar span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scene-inspection-controls {
+  flex-shrink: 0;
+  max-height: 45%;
+  overflow-y: auto;
+  border-top: 1px solid var(--line);
+  overscroll-behavior: contain;
+}
+.scene-inspection-controls > summary {
+  padding: 8px 12px;
+  cursor: pointer;
+  font: 9px/1.7 var(--mono);
+}
+.scene-inspection-controls .scene-tools {
+  position: static;
+  flex-wrap: wrap;
+  padding: 10px;
+  background: var(--tone-f5f5f3);
+  gap: 10px;
+}
+.lesson-visual-column > .lesson-data-transfer {
+  padding: 10px 14px;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+.lesson-visual-column > .lesson-data-transfer code {
+  font-size: 12px;
+}
+.lesson-visual-column > .lesson-motion-controls {
+  margin: 0;
+  padding: 6px 12px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.lesson-visual-column > .lesson-motion-controls button {
+  padding: 6px 9px;
+  font-size: 9px;
+}
+.lesson-visual-column > .flow-scrubber {
+  padding: 4px 14px 8px;
+  border-bottom: 0;
+  flex-shrink: 0;
+}
+.lesson-visual-column > .flow-scrubber > button {
+  padding: 3px 0;
+  font-size: 9px;
+}
+.lesson-visual-column > .flow-scrubber label {
+  margin: 6px 0 0;
+  gap: 2px;
+  font-size: 9px;
+}
+.lesson-explanation-column > .guided-step-nav {
+  margin: 0;
+  padding: 10px;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.lesson-explanation-column > .guided-step-nav button {
+  padding: 8px 6px;
+  font-size: 8px;
+  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+}
+.lesson-explanation-column > .guided-step {
+  min-height: 0;
+  padding: 12px 16px;
+  margin: 0 10px 10px;
+  flex-shrink: 0;
+}
+.lesson-explanation-column > .guided-step p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.75;
+}
+.lesson-explanation-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.lesson-explanation-scroll .lesson-state-values {
+  padding: 12px 16px;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.lesson-explanation-scroll .step-mechanism {
+  padding: 16px;
+}
+.lesson-explanation-scroll .step-mechanism p {
+  font-size: 13px;
+  line-height: 1.85;
+}
+.lesson-explanation-scroll .step-mechanism h4 {
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+}
+.lesson-explanation-column > .guided-step-actions {
+  margin: 0;
+  border-top: 1px solid var(--line);
+  padding: 10px 12px;
+  background: var(--tone-ffffff);
+  flex-shrink: 0;
+  gap: 12px;
+}
+.lesson-explanation-column > .guided-step-actions button {
+  font-size: 9px;
+  padding: 5px 0;
+}
+@media (max-width: 820px) {
+  .guided-walkthrough .synchronized-lesson {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(230px, 1.1fr) minmax(230px, 1fr);
+    height: calc(100svh - 20px);
+    min-height: 520px;
+  }
+  .lesson-explanation-column {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .lesson-explanation-column > .guided-step-nav {
+    padding: 6px 10px;
+  }
+  .lesson-explanation-column > .guided-step {
+    padding: 8px 12px;
+    margin-bottom: 6px;
+  }
+  .lesson-explanation-column > .guided-step p {
+    font-size: 12px;
+    line-height: 1.65;
+    margin-top: 4px;
+  }
+  .lesson-explanation-column > .guided-step-actions {
+    padding: 6px 12px;
+  }
+  .lesson-explanation-column > .guided-step-actions button {
+    min-height: 36px;
+  }
+  .lesson-explanation-scroll .step-mechanism p {
+    font-size: 12px;
+  }
+  .lesson-visual-column .lesson-scene-toolbar {
+    padding: 7px 12px;
+    font-size: 9px;
+  }
+  .scene-camera-toolbar {
+    padding: 5px 12px;
+    font-size: 8px;
+  }
+  .lesson-visual-column > .lesson-data-transfer {
+    padding: 6px 12px;
+    grid-template-columns: 1fr auto;
+    gap: 2px 10px;
+    font-size: 9px;
+  }
+  .lesson-visual-column > .lesson-data-transfer code {
+    grid-column: 1/-1;
+    grid-row: 2;
+    font-size: 10px;
+  }
+  .lesson-visual-column > .lesson-motion-controls {
+    padding: 4px 12px;
+  }
+  .lesson-visual-column > .flow-scrubber {
+    padding-bottom: 4px;
+  }
+}

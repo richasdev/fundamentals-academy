@@ -20,40 +20,13 @@ export default function GuidedExplanation({
         aria-label="Explicação em três passos"
       >
         <h4>Execução explicada</h4>
-        <div
-          className="guided-step-nav"
-          role="group"
-          aria-label="Escolher passo da explicação"
-        >
-          {guide.steps.map((_, i) => (
-            <button
-              key={i}
-              aria-label={`Ver passo ${i + 1} da explicação`}
-              aria-pressed={step === i}
-              onClick={() => setStep(i)}
-            >
-              <span>0{i + 1}</span>
-              {step === i
-                ? "Você está aqui"
-                : i < step
-                  ? "Revisitar"
-                  : "Explorar"}
-            </button>
-          ))}
-        </div>
-        <div className="guided-step" aria-live="polite" aria-atomic="true">
-          <span>PASSO {step + 1} DE 3</span>
-          <p>{guide.steps[step]}</p>
-        </div>
-        <SynchronizedLesson id={id} chapter={chapter} step={step} />
-        <div className="guided-step-actions">
-          <button disabled={step === 0} onClick={() => setStep((s) => s - 1)}>
-            ← Passo anterior
-          </button>
-          <button disabled={step === 2} onClick={() => setStep((s) => s + 1)}>
-            Próximo passo explicado →
-          </button>
-        </div>
+        <SynchronizedLesson
+          id={id}
+          chapter={chapter}
+          step={step}
+          narration={guide.steps[step]}
+          onStep={setStep}
+        />
       </section>
       <section className="plain-explanation" aria-label="Explicação simples">
         <h4>Imagine uma situação do dia a dia</h4>
