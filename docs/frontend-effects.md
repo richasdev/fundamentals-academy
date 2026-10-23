@@ -25,3 +25,9 @@ Cada um dos 81 passos tem uma explicação de mecanismo e uma evidência a procu
 O slider de percurso controla posição visual, inclusive quando movimento reduzido está ativo, pois é manipulação explícita. Chegar ao fim confirma a entrega somente quando existe receptor. Voltar retira a confirmação visual e restaura o valor anterior no modelo. A animação automática continua disponível. Setas no trajeto, pontos, rastro e anel de chegada mostram direção e resolução.
 
 A interface de inspeção descreve função lógica e anatomia física separadamente. As referências primárias adicionais incluem [TCP RFC 9293](https://www.rfc-editor.org/rfc/rfc9293.html), [WAL no PostgreSQL](https://www.postgresql.org/docs/current/wal-intro.html) e [containers no C4](https://c4model.com/diagrams/container).
+
+## Painel de execução e câmera
+
+O painel de leitura combina cena e explicação em duas colunas acima de 820 px. Em telas menores, as duas áreas compartilham a altura disponível verticalmente. A explicação longa tem seu próprio scroll, enquanto a navegação fica fixa no rodapé do painel. Os testes verificam posições em viewport e ausência de mudança de scroll da página ao trocar etapas.
+
+O enquadramento inicial preserva as duas pontas do fluxo e a altura do arco; a chegada aproxima o receptor. A câmera não aproxima um destinatário indisponível como se ele tivesse recebido o dado. A transição usa interpolação cúbica sem overshoot por 650 ms; com movimento reduzido a posição é aplicada diretamente. O usuário pode desligar o acompanhamento, orbitar ou enquadrar uma peça pela inspeção sem avançar a aula.

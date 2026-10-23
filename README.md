@@ -80,3 +80,11 @@ As explicações de cada passo incluem causa, evidência a observar e comparaç�
 O modo manual permite mover o dado de 0 a 100% sem depender de tempo. O estado do receptor só é exibido como recebido no final; voltar o controle restaura o estado anterior da demonstração. Essa ação não modifica o progresso da trilha nem o motor da bancada livre.
 
 A inspeção 3D oferece enquadramento de uma peça, abertura de camadas e descrição de três grupos de partes. CPU, memória, HDD e servidor têm cortes didáticos; pratos, braço e ventoinha acompanham atividade de fluxo com pausa e movimento reduzido. `PLAYWRIGHT_PORT` permite testar em uma porta isolada quando há outro projeto aberto.
+
+## Leitura ao lado da cena
+
+Na execução explicada, modelo, mensagem, explicação e navegação ficam em uma área limitada à altura da janela. Desktop usa duas colunas; celular mantém modelo acima e texto abaixo no mesmo painel. O aprofundamento tem rolagem interna, e os botões de etapa permanecem visíveis.
+
+A câmera acompanha o caminho da transferência e aproxima o receptor depois da chegada. `Acompanhar etapa` permite liberar ou reativar o acompanhamento; órbita manual interrompe o movimento corrente. Mensagens perdidas mantêm o caminho interrompido em contexto. Movimento reduzido aplica o enquadramento diretamente.
+
+`cameraFraming.ts` calcula planos respeitando campo de visão, proporção, rotação e separação das peças. `LessonCamera.tsx` interpola câmera e alvo de órbita em 650 ms, solicitando frames apenas durante a transição. Os dados, a execução e o progresso não são alterados pela câmera.
