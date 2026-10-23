@@ -71,4 +71,12 @@ As 27 aulas têm um guia adicional em linguagem simples: analogia cotidiana, lig
 
 Cada um dos 81 passos seleciona uma cena 3D correspondente, com remetente, conteúdo em trânsito e destaque do receptor após a chegada. Há pausa, replay, inspeção e alternativa em diagrama. `lessonScenes.ts` usa os motores das bancadas quando aplicável e cenas lógicas para mecanismos adicionais. As limitações continuam explícitas.
 
-As nove trilhas oferecem sessões estimadas de 42–58 minutos de leitura e laboratório, com seis investigações, anotações por aula e síntese por trilha. `studySessions.ts` reúne o aprofundamento e os protocolos; `sessionDuration.ts` calcula o tempo de leitura e soma prática e reflexão. O caderno usa armazenamento local e não conclui automaticamente a trilha. Veja [interface e movimento](docs/frontend-effects.md).
+As nove trilhas oferecem sessões de leitura e laboratório com duração recalculada a partir do conteúdo e da prática, com seis investigações, anotações por aula e síntese por trilha. `studySessions.ts` reúne o aprofundamento e os protocolos; `sessionDuration.ts` calcula o tempo de leitura e soma prática e reflexão. O caderno usa armazenamento local e não conclui automaticamente a trilha. Veja [interface e movimento](docs/frontend-effects.md).
+
+## Inspeção e percurso manual
+
+As explicações de cada passo incluem causa, evidência a observar e comparação com o estado anterior. `mechanisms.ts` acrescenta 81 explicações específicas e `componentRoles.ts` descreve as responsabilidades dos componentes nas cenas e nas bancadas livres.
+
+O modo manual permite mover o dado de 0 a 100% sem depender de tempo. O estado do receptor só é exibido como recebido no final; voltar o controle restaura o estado anterior da demonstração. Essa ação não modifica o progresso da trilha nem o motor da bancada livre.
+
+A inspeção 3D oferece enquadramento de uma peça, abertura de camadas e descrição de três grupos de partes. CPU, memória, HDD e servidor têm cortes didáticos; pratos, braço e ventoinha acompanham atividade de fluxo com pausa e movimento reduzido. `PLAYWRIGHT_PORT` permite testar em uma porta isolada quando há outro projeto aberto.

@@ -37,3 +37,13 @@ O fluxo visual usa pontos esféricos igualmente espaçados ao longo da curva. O 
 Lógica usa módulos de entrada, CI e saída com pinos, contatos e trilhas. Processos e fases de compilação usam módulos lógicos na mesma bancada: não são chips físicos independentes em um computador real. Infraestrutura e replicação reutilizam servidores com baias, ventilação e conectores. Páginas de banco aparecem sobre unidades com três pratos, eixo e braço metálico; a representação mostra endereçamento lógico e não corresponde a uma página por disco.
 
 As cenas oferecem órbita, zoom, separação, inspeção, alternativa 2D e readout de todos os valores. As curvas deslocam seus pontos junto com a vista explodida. Os fluxos carregam mensagens calculadas pelos modelos; um receptor ganha contorno e emissão após a chegada, e um destino indisponível nunca recebe esse destaque. O texto do dado usa sprites orientados para a câmera. Etiquetas expandem a altura para mensagens maiores, incluindo tokens do compilador.
+
+## Camadas e atividade
+
+A abertura de camadas separa a tampa e o dissipador da CPU do die esquemático, levanta os chips da memória, separa pratos e braço do HDD e torna o chassis do servidor translúcido para expor bandejas. Enquadrar uma peça aproxima a câmera sem avançar o simulador; redefinir a vista fecha as camadas e preserva a execução.
+
+Durante uma transferência, modelos de HDD podem girar os pratos e deslocar o braço, e servidores podem girar a ventoinha. Essas ações ilustram atividade, sem prometer correspondência temporal com os mecanismos físicos. A pausa congela o movimento; a preferência por movimento reduzido mantém as peças estáticas. As rotinas solicitam frames enquanto há atividade em curso e param ao pausar ou concluir o fluxo.
+
+As três partes da anatomia têm descrições acessíveis no DOM. As mesmas ações são alcançáveis por seletor, botão e slider, sem exigir clicar em uma malha 3D.
+
+Marcadores 01–03 aparecem no componente selecionado quando suas camadas são abertas, correspondendo à legenda de anatomia. São sprites locais orientados para a câmera, sem fontes ou imagens externas.
