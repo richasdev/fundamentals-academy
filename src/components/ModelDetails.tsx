@@ -1,8 +1,60 @@
-import { useLayoutEffect, useRef } from "react";
-import { Color, InstancedMesh, Object3D } from "three";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { Color, Group, InstancedMesh, Object3D } from "three";
+import { useFrame, useThree } from "@react-three/fiber";
 import PhysicalSurface from "./PhysicalSurface";
 import { Line } from "@react-three/drei";
 type Vec = [number, number, number];
+function ActivityGroup({
+  mode,
+  active,
+  paused,
+  position,
+  children,
+}: {
+  mode: "spin" | "sweep";
+  active: boolean;
+  paused: boolean;
+  position?: Vec;
+  children: ReactNode;
+}) {
+  const ref = useRef<Group>(null),
+    phase = useRef(0);
+  const { invalidate } = useThree();
+  const [reduced, setReduced] = useState(
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const changed = () => setReduced(media.matches);
+    media.addEventListener("change", changed);
+    return () => media.removeEventListener("change", changed);
+  }, []);
+  useEffect(() => invalidate(), [active, paused, reduced, invalidate]);
+  useFrame((_, delta) => {
+    if (!ref.current || !active || paused || reduced) return;
+    phase.current += Math.min(delta, 0.06);
+    ref.current.rotation.y =
+      mode === "spin"
+        ? phase.current * 2
+        : 0.8 + Math.sin(phase.current * 2) * 0.28;
+    invalidate();
+  });
+  return (
+    <group
+      ref={ref}
+      position={position}
+      rotation={mode === "sweep" ? [0, 0.8, 0] : [0, 0, 0]}
+    >
+      {children}
+    </group>
+  );
+}
 export type PartKind =
   | "cpu"
   | "control"
@@ -60,21 +112,37 @@ function Bolt({ position }: { position: Vec }) {
     </group>
   );
 }
-function Fan({ position, radius = 0.2 }: { position: Vec; radius?: number }) {
+function Fan({
+  position,
+  radius = 0.2,
+  active = false,
+  paused = false,
+}: {
+  position: Vec;
+  radius?: number;
+  active?: boolean;
+  paused?: boolean;
+}) {
   return (
     <group position={position} rotation={[Math.PI / 2, 0, 0]}>
       <mesh>
         <torusGeometry args={[radius, 0.025, 5, 20]} />
         <meshStandardMaterial color="#b9a977" metalness={0.6} roughness={0.4} />
       </mesh>
-      {Array.from({ length: 5 }, (_, i) => (
-        <group key={i} rotation={[0, 0, (i * Math.PI * 2) / 5]}>
-          <mesh position={[0, radius * 0.48, 0]} rotation={[0, 0, 0.4]}>
-            <boxGeometry args={[radius * 0.65, radius * 0.7, 0.025]} />
-            <meshStandardMaterial color="#383838" />
-          </mesh>
-        </group>
-      ))}
+      <group rotation={[-Math.PI / 2, 0, 0]}>
+        <ActivityGroup mode="spin" active={active} paused={paused}>
+          <group rotation={[Math.PI / 2, 0, 0]}>
+            {Array.from({ length: 5 }, (_, i) => (
+              <group key={i} rotation={[0, 0, (i * Math.PI * 2) / 5]}>
+                <mesh position={[0, radius * 0.48, 0]} rotation={[0, 0, 0.4]}>
+                  <boxGeometry args={[radius * 0.65, radius * 0.7, 0.025]} />
+                  <meshStandardMaterial color="#383838" />
+                </mesh>
+              </group>
+            ))}
+          </group>
+        </ActivityGroup>
+      </group>
       <mesh>
         <cylinderGeometry args={[radius * 0.2, radius * 0.2, 0.05, 10]} />
         <meshStandardMaterial color="#b4b4b4" />
@@ -163,10 +231,16 @@ export default function ModelDetails({
   kind,
   size,
   value = 0,
+  explode = 0,
+  active = false,
+  paused = false,
 }: {
   kind: PartKind;
   size: Vec;
   value?: number;
+  explode?: number;
+  active?: boolean;
+  paused?: boolean;
 }) {
   const [w, h, d] = size;
   const top = h / 2 + 0.012;
@@ -185,35 +259,48 @@ export default function ModelDetails({
             />
           )),
         )}
-        {[0, 0.075, 0.15].map((y) => (
-          <group key={y} position={[-w * 0.12, top + 0.07 + y, 0]}>
-            <mesh>
-              <cylinderGeometry args={[d * 0.34, d * 0.34, 0.022, 48]} />
-              <PhysicalSurface kind="metal" color="#bcc9d2" />
-            </mesh>
-            {[0.14, 0.24, 0.31].map((r) => (
-              <mesh
-                key={r}
-                rotation={[-Math.PI / 2, 0, 0]}
-                position={[0, 0.014, 0]}
-              >
-                <torusGeometry args={[d * r, 0.003, 4, 48]} />
-                <meshStandardMaterial
-                  color="#789098"
-                  metalness={0.85}
-                  roughness={0.25}
-                />
+        <ActivityGroup
+          mode="spin"
+          active={active}
+          paused={paused}
+          position={[-w * 0.12, top + 0.07, 0]}
+        >
+          {[0, 0.075, 0.15].map((y, i) => (
+            <group key={y} position={[0, y + explode * (i + 1) * 0.2, 0]}>
+              <mesh>
+                <cylinderGeometry args={[d * 0.34, d * 0.34, 0.022, 48]} />
+                <PhysicalSurface kind="metal" color="#bcc9d2" />
               </mesh>
-            ))}
-          </group>
-        ))}
+              <mesh position={[d * 0.27, 0.018, 0]}>
+                <boxGeometry args={[d * 0.1, 0.008, 0.014]} />
+                <meshStandardMaterial color="#4d636d" metalness={0.7} />
+              </mesh>
+              {[0.14, 0.24, 0.31].map((r) => (
+                <mesh
+                  key={r}
+                  rotation={[-Math.PI / 2, 0, 0]}
+                  position={[0, 0.014, 0]}
+                >
+                  <torusGeometry args={[d * r, 0.003, 4, 48]} />
+                  <meshStandardMaterial
+                    color="#789098"
+                    metalness={0.85}
+                    roughness={0.25}
+                  />
+                </mesh>
+              ))}
+            </group>
+          ))}
+        </ActivityGroup>
         <mesh position={[-w * 0.12, top + 0.18, 0]}>
           <cylinderGeometry args={[0.085, 0.085, 0.29, 20]} />
           <PhysicalSurface kind="metal" color="#b09b6c" />
         </mesh>
-        <group
-          position={[w * 0.25, top + 0.25, d * 0.23]}
-          rotation={[0, 0.8, 0]}
+        <ActivityGroup
+          mode="sweep"
+          active={active}
+          paused={paused}
+          position={[w * 0.25, top + 0.25 + explode * 0.6, d * 0.23]}
         >
           <mesh>
             <cylinderGeometry args={[0.075, 0.075, 0.06, 16]} />
@@ -227,7 +314,7 @@ export default function ModelDetails({
             <boxGeometry args={[0.08, 0.025, 0.1]} />
             <meshStandardMaterial color="#21262a" />
           </mesh>
-        </group>
+        </ActivityGroup>
         <Boxes
           positions={Array.from(
             { length: 8 },
@@ -241,7 +328,7 @@ export default function ModelDetails({
   if (kind === "cpu" || kind === "control")
     return (
       <group>
-        <mesh position={[0, top, 0]}>
+        <mesh position={[0, top + explode * 0.5, 0]}>
           <boxGeometry args={[w * 0.85, 0.035, d * 0.85]} />
           <meshStandardMaterial
             color="#a8a8a8"
@@ -249,6 +336,29 @@ export default function ModelDetails({
             roughness={0.35}
           />
         </mesh>
+        {explode > 0 && (
+          <group position={[0, top + 0.02, 0]}>
+            <mesh>
+              <boxGeometry args={[w * 0.7, 0.035, d * 0.67]} />
+              <PhysicalSurface kind="silicon" color="#284c65" />
+            </mesh>
+            <Boxes
+              positions={[-0.2, 0.2].flatMap((x) =>
+                [-0.18, 0.18].map((z) => [x * w, 0.045, z * d] as Vec),
+              )}
+              size={[w * 0.23, 0.025, d * 0.2]}
+              color={active ? "#83cbcb" : "#476a84"}
+            />
+            <Boxes
+              positions={Array.from(
+                { length: 8 },
+                (_, i) => [(i - 3.5) * w * 0.075, 0.065, 0] as Vec,
+              )}
+              size={[w * 0.05, 0.018, d * 0.09]}
+              color="#bb9d6d"
+            />
+          </group>
+        )}
         <mesh position={[0, top + 0.03, 0]}>
           <boxGeometry args={[w * 0.62, 0.04, d * 0.62]} />
           <meshStandardMaterial
@@ -304,7 +414,7 @@ export default function ModelDetails({
           <Boxes
             positions={Array.from({ length: 9 }, (_, i) => [
               (i - 4) * w * 0.085,
-              top + 0.18,
+              top + 0.18 + explode * 0.95,
               0,
             ])}
             size={[0.055, 0.24, d * 0.9]}
@@ -324,12 +434,37 @@ export default function ModelDetails({
           positions={Array.from({ length: kind === "byte" ? 2 : 4 }, (_, i) => [
             ((i - ((kind === "byte" ? 2 : 4) - 1) / 2) * w) /
               (kind === "byte" ? 2.7 : 4.7),
-            top + 0.055,
+            top + 0.055 + explode * 0.35,
             0,
           ])}
           size={[w * (kind === "byte" ? 0.29 : 0.17), 0.075, d * 0.44]}
           color="#282828"
         />
+        <Boxes
+          positions={Array.from(
+            { length: 32 },
+            (_, i) =>
+              [
+                ((i % 16) - 7.5) * w * 0.051,
+                top + 0.025,
+                (i < 16 ? -1 : 1) * d * 0.27,
+              ] as Vec,
+          )}
+          size={[w * 0.022, 0.018, d * 0.065]}
+          color="#b2b4b0"
+        />
+        {Array.from({ length: 8 }, (_, i) => (
+          <Line
+            key={i}
+            points={[
+              [w * (i - 3.5) * 0.105, top + 0.016, d * 0.4],
+              [w * (i - 3.5) * 0.105, top + 0.016, 0],
+              [w * (i - 3.5) * 0.08, top + 0.016, -d * 0.3],
+            ]}
+            color="#b59b58"
+            lineWidth={0.8}
+          />
+        ))}
         <Boxes
           positions={Array.from({ length: 8 }, (_, i) => [
             (i - 3.5) * w * 0.105,
@@ -462,7 +597,10 @@ export default function ModelDetails({
     return (
       <group>
         {Array.from({ length: 5 }, (_, i) => (
-          <group key={i} position={[0, (i - 2) * 0.32, d / 2 + 0.025]}>
+          <group
+            key={i}
+            position={[0, (i - 2) * 0.32, d / 2 + 0.025 + explode * 0.65]}
+          >
             <mesh>
               <boxGeometry args={[w * 0.8, 0.25, 0.045]} />
               <meshStandardMaterial color="#272727" />
@@ -486,6 +624,27 @@ export default function ModelDetails({
             </mesh>
           </group>
         ))}
+        {explode > 0 &&
+          Array.from({ length: 4 }, (_, i) => (
+            <group key={i} position={[0, (i - 1.5) * 0.4, 0]}>
+              <mesh>
+                <boxGeometry args={[w * 0.82, 0.04, d * 0.8]} />
+                <PhysicalSurface kind="pcb" color="#224e3b" />
+              </mesh>
+              <Boxes
+                positions={[-0.2, 0.15].map((x) => [x, 0.06, 0] as Vec)}
+                size={[0.22, 0.08, 0.25]}
+                color="#292f35"
+              />
+              <Boxes
+                positions={[-0.25, 0, 0.25].map(
+                  (x) => [x, 0.05, -d * 0.25] as Vec,
+                )}
+                size={[0.08, 0.04, 0.12]}
+                color="#bec9c6"
+              />
+            </group>
+          ))}
         {[-1, 1].flatMap((x) =>
           [-1, 1].map((z) => (
             <mesh
@@ -517,7 +676,12 @@ export default function ModelDetails({
             <PhysicalSurface kind="metal" color="#838f98" />
           </mesh>
         ))}
-        <Fan position={[0, top + 0.03, 0]} radius={0.38} />
+        <Fan
+          position={[0, top + 0.03 + explode * 0.45, 0]}
+          radius={0.38}
+          active={active}
+          paused={paused}
+        />
         {[0.12, 0.2, 0.28, 0.36].map((r) => (
           <mesh
             key={r}

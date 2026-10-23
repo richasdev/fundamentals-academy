@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
   Object3D,
   QuadraticBezierCurve3,
+  Quaternion,
   Vector3,
   SRGBColorSpace,
 } from "three";
@@ -34,11 +35,13 @@ export default function DataFlow({
   event,
   speed = 1,
   paused = false,
+  controlledProgress,
   onArrival,
 }: {
   event: FlowEvent;
   speed?: number;
   paused?: boolean;
+  controlledProgress?: number;
   onArrival: () => void;
 }) {
   const { invalidate } = useThree();
@@ -123,6 +126,16 @@ export default function DataFlow({
       ),
     [curve],
   );
+  const direction = useMemo(
+    () => ({
+      point: curve.getPointAt(0.52),
+      quaternion: new Quaternion().setFromUnitVectors(
+        new Vector3(0, 1, 0),
+        curve.getTangentAt(0.52).normalize(),
+      ),
+    }),
+    [curve],
+  );
   useLayoutEffect(() => {
     if (!dots.current) return;
     const object = new Object3D();
@@ -145,16 +158,28 @@ export default function DataFlow({
     delivered.current = false;
     invalidate();
   }, [event, reduced, invalidate]);
-  useEffect(() => invalidate(), [paused, speed, theme, invalidate]);
+  useEffect(
+    () => invalidate(),
+    [paused, speed, theme, controlledProgress, invalidate],
+  );
   useFrame((_, delta) => {
     if (!marker.current) return;
-    if (!paused)
+    if (controlledProgress !== undefined)
+      progress.current =
+        controlledProgress >= 1 ? 1.3 : Math.max(0, controlledProgress);
+    else if (!paused)
       progress.current = Math.min(
         1.3,
         progress.current + (Math.min(delta, 0.06) * speed) / 1.05,
       );
-    const travel = reduced ? 1 : Math.min(1, progress.current),
+    const travel =
+        controlledProgress !== undefined
+          ? Math.min(1, Math.max(0, controlledProgress))
+          : reduced
+            ? 1
+            : Math.min(1, progress.current),
       eased = travel * travel * (3 - 2 * travel);
+    if (travel < 1) delivered.current = false;
     if (travel === 1 && !delivered.current) {
       delivered.current = true;
       onArrival();
@@ -179,10 +204,20 @@ export default function DataFlow({
       (arrival.current.material as MeshBasicMaterial).opacity =
         (1 - settling) * 0.8;
     }
-    if (!reduced && progress.current < 1.3 && !paused) invalidate();
+    if (
+      controlledProgress === undefined &&
+      !reduced &&
+      progress.current < 1.3 &&
+      !paused
+    )
+      invalidate();
   });
   return (
     <group>
+      <mesh position={direction.point} quaternion={direction.quaternion}>
+        <coneGeometry args={[0.1, 0.28, 8]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
       <instancedMesh
         key={points.length}
         ref={dots}

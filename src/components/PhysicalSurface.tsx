@@ -40,15 +40,20 @@ export default function PhysicalSurface({
   color,
   emissive = "#000000",
   emissiveIntensity = 0.07,
+  opacity = 1,
 }: {
   kind: SurfaceKind;
   color: string;
   emissive?: string;
   emissiveIntensity?: number;
+  opacity?: number;
 }) {
   const texture = microSurface(kind);
   return (
     <meshStandardMaterial
+      transparent={opacity < 1}
+      opacity={opacity}
+      depthWrite={opacity === 1}
       color={color}
       metalness={
         kind === "metal"

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import {
   Environment,
@@ -12,15 +12,27 @@ import { BoardDetails } from "./ModelDetails";
 import DataFlow from "./DataFlow";
 import type { WorkshopNode, WorkshopStep } from "../simulators/workshops";
 import { useAppearance } from "../theme";
-function Camera({ resetKey }: { resetKey: number }) {
+import { nodeModel, modelAnatomy } from "./modelAnatomy";
+function Camera({
+  resetKey,
+  target,
+}: {
+  resetKey: number;
+  target: [number, number, number];
+}) {
   const { camera, size, invalidate } = useThree();
   useEffect(() => {
     const k = size.width / size.height < 1.15 ? 1.5 : 1;
-    camera.position.set(5 * k, 6 * k, 9 * k);
-    camera.lookAt(0, 0, 0);
+    const close = target.some((v) => v !== 0);
+    camera.position.set(
+      target[0] + (close ? 2.8 : 5) * k,
+      target[1] + (close ? 2.8 : 6) * k,
+      target[2] + (close ? 4 : 9) * k,
+    );
+    camera.lookAt(...target);
     camera.updateProjectionMatrix();
     invalidate();
-  }, [camera, size.width, size.height, invalidate, resetKey]);
+  }, [camera, size.width, size.height, invalidate, resetKey, target]);
   return null;
 }
 export default function Workshop3D({
@@ -32,6 +44,7 @@ export default function Workshop3D({
   onArrival,
   arrived,
   focus = [],
+  controlledProgress,
 }: {
   nodes: WorkshopNode[];
   step: WorkshopStep;
@@ -41,12 +54,33 @@ export default function Workshop3D({
   onArrival: () => void;
   arrived: boolean;
   focus?: string[];
+  controlledProgress?: number;
 }) {
   const { theme } = useAppearance();
   const [rotation, setRotation] = useState(0),
     [spread, setSpread] = useState(1),
     [cameraKey, setCameraKey] = useState(0);
   const [selected, setSelected] = useState("");
+  const [viewNode, setViewNode] = useState("");
+  const [explode, setExplode] = useState(0);
+  const selectedNode = nodes.find((n) => n.id === selected);
+  const anatomy = selectedNode ? modelAnatomy[nodeModel(selectedNode)] : null;
+  const view = nodes.find((n) => n.id === viewNode);
+  const tx = (view?.position[0] || 0) * spread,
+    tz = (view?.position[2] || 0) * spread;
+  const targetKey = JSON.stringify(
+    view
+      ? [
+          tx * Math.cos(rotation) + tz * Math.sin(rotation),
+          view.kind === "server" ? 0.7 : 0.2,
+          tz * Math.cos(rotation) - tx * Math.sin(rotation),
+        ]
+      : [0, 0, 0],
+  );
+  const target = useMemo<[number, number, number]>(
+    () => JSON.parse(targetKey),
+    [targetKey],
+  );
   // A vista explodida desloca nós e os pontos do fluxo juntos.
   const spatialNodes = nodes.map((n) => ({
     ...n,
@@ -72,119 +106,143 @@ export default function Workshop3D({
   // Stable event identity avoids restarting animations when a receiver changes color.
   const flowSignature = JSON.stringify(flow);
   return (
-    <div className="three-scene workshop-scene">
-      <SceneBoundary>
-        <Canvas
-          frameloop="demand"
-          dpr={[1, 1.5]}
-          shadows
-          camera={{ position: [5, 6, 9], fov: 42 }}
-        >
-          <Camera resetKey={cameraKey} />
-          <color
-            attach="background"
-            args={[theme === "dark" ? "#171b19" : "#f5f5f3"]}
-          />
-          <ambientLight intensity={0.8} />
-          <directionalLight
-            position={[4, 8, 5]}
-            intensity={3}
-            castShadow
-            shadow-mapSize={[1024, 1024]}
-          />
-          <Environment resolution={64} frames={1}>
-            <Lightformer
-              position={[0, 5, -3]}
-              rotation={[Math.PI / 2, 0, 0]}
-              scale={[10, 8, 1]}
-              intensity={3}
+    <div className="workshop-viewport">
+      <div className="three-scene workshop-scene">
+        <SceneBoundary>
+          <Canvas
+            frameloop="demand"
+            dpr={[1, 1.5]}
+            shadows
+            camera={{ position: [5, 6, 9], fov: 42 }}
+          >
+            <Camera resetKey={cameraKey} target={target} />
+            <color
+              attach="background"
+              args={[theme === "dark" ? "#171b19" : "#f5f5f3"]}
             />
-          </Environment>
-          <group rotation={[0, rotation, 0]}>
-            <mesh position={[0, -0.5, 0]} receiveShadow>
-              <boxGeometry args={[11, 0.12, 7]} />
-              <PhysicalSurface kind="pcb" color="#153e2c" />
-            </mesh>
-            <BoardDetails network={false} memory={false} />
-            {spatialNodes.map((n, i) => (
-              <group key={n.id}>
-                <Part
-                  position={[
-                    n.position[0],
-                    n.kind === "server" ? 0.65 : 0,
-                    n.position[2],
-                  ]}
-                  size={
-                    n.kind === "server"
-                      ? [1.25, 2, 1.25]
-                      : n.kind === "cpu"
-                        ? [1.6, 0.5, 1.4]
-                        : [1.5, 0.22, 1]
-                  }
-                  modelKind={n.kind === "storage" ? "drive" : n.kind}
-                  label={n.label}
-                  sub={(step.values[n.id] || "—").slice(0, 22)}
-                  color={
-                    ["#547caa", "#6e9e62", "#9774a6", "#b19b59", "#548d8f"][
-                      i % 5
-                    ]
-                  }
-                  receiving={
-                    arrived && !step.flow?.lost && step.flow?.receiver === n.id
-                  }
-                  focused={focus.includes(n.id)}
-                  selected={selected === n.id}
-                  onSelect={() => setSelected(n.id)}
-                />
-
-                {i > 0 && (
-                  <Line
-                    points={[
-                      [
-                        spatialNodes[0].position[0],
-                        -0.3,
-                        spatialNodes[0].position[2],
-                      ],
-                      [n.position[0], -0.3, n.position[2]],
-                    ]}
-                    color="#718b7e"
-                    lineWidth={1}
-                  />
-                )}
-              </group>
-            ))}
-            {flow && (
-              <StableFlow
-                key={`${replay}-${flowSignature}`}
-                signature={flowSignature}
-                speed={speed}
-                paused={paused}
-                onArrival={onArrival}
+            <ambientLight intensity={0.8} />
+            <directionalLight
+              position={[4, 8, 5]}
+              intensity={3}
+              castShadow
+              shadow-mapSize={[1024, 1024]}
+            />
+            <Environment resolution={64} frames={1}>
+              <Lightformer
+                position={[0, 5, -3]}
+                rotation={[Math.PI / 2, 0, 0]}
+                scale={[10, 8, 1]}
+                intensity={3}
               />
-            )}
-          </group>
-          <gridHelper
-            args={[
-              30,
-              30,
-              theme === "dark" ? "#434c46" : "#d0d0d0",
-              theme === "dark" ? "#2b352e" : "#e3e3e3",
-            ]}
-            position={[0, -0.58, 0]}
-          />
-          <OrbitControls
-            key={cameraKey}
-            makeDefault
-            enableDamping={false}
-            minDistance={4}
-            maxDistance={24}
-            maxPolarAngle={Math.PI / 2.08}
-            target={[0, 0, 0]}
-          />
-        </Canvas>
-      </SceneBoundary>
-      <div className="scene-inspector" aria-live="polite">
-        {nodes.find((n) => n.id === selected)?.detail || ""}
+            </Environment>
+            <group rotation={[0, rotation, 0]}>
+              <mesh position={[0, -0.5, 0]} receiveShadow>
+                <boxGeometry args={[11, 0.12, 7]} />
+                <PhysicalSurface kind="pcb" color="#153e2c" />
+              </mesh>
+              <BoardDetails network={false} memory={false} />
+              {spatialNodes.map((n, i) => (
+                <group key={n.id}>
+                  <Part
+                    position={[
+                      n.position[0],
+                      n.kind === "server" ? 0.65 : 0,
+                      n.position[2],
+                    ]}
+                    size={
+                      n.kind === "server"
+                        ? [1.25, 2, 1.25]
+                        : n.kind === "cpu"
+                          ? [1.6, 0.5, 1.4]
+                          : [1.5, 0.22, 1]
+                    }
+                    modelKind={nodeModel(n)}
+                    explode={selected === n.id ? explode : 0}
+                    active={
+                      !arrived &&
+                      !step.flow?.lost &&
+                      (focus.includes(n.id) ||
+                        step.flow?.source === n.label ||
+                        step.flow?.receiver === n.id)
+                    }
+                    paused={paused}
+                    label={n.label}
+                    sub={(step.values[n.id] || "—").slice(0, 22)}
+                    color={
+                      ["#547caa", "#6e9e62", "#9774a6", "#b19b59", "#548d8f"][
+                        i % 5
+                      ]
+                    }
+                    receiving={
+                      arrived &&
+                      !step.flow?.lost &&
+                      step.flow?.receiver === n.id
+                    }
+                    focused={
+                      focus.includes(n.id) || step.flow?.source === n.label
+                    }
+                    selected={selected === n.id}
+                    onSelect={() => setSelected(n.id)}
+                  />
+                  {nodeModel(n) === "laptop" && (
+                    <Part
+                      position={[n.position[0], 0.65, n.position[2] - 0.45]}
+                      size={[1.5, 0.95, 0.08]}
+                      label=""
+                      color="#373b40"
+                      modelKind="screen"
+                      onSelect={() => setSelected(n.id)}
+                      selected={selected === n.id}
+                    />
+                  )}
+
+                  {i > 0 && (
+                    <Line
+                      points={[
+                        [
+                          spatialNodes[0].position[0],
+                          -0.3,
+                          spatialNodes[0].position[2],
+                        ],
+                        [n.position[0], -0.3, n.position[2]],
+                      ]}
+                      color="#718b7e"
+                      lineWidth={1}
+                    />
+                  )}
+                </group>
+              ))}
+              {flow && (
+                <StableFlow
+                  key={`${replay}-${flowSignature}`}
+                  signature={flowSignature}
+                  speed={speed}
+                  paused={paused}
+                  controlledProgress={controlledProgress}
+                  onArrival={onArrival}
+                />
+              )}
+            </group>
+            <gridHelper
+              args={[
+                30,
+                30,
+                theme === "dark" ? "#434c46" : "#d0d0d0",
+                theme === "dark" ? "#2b352e" : "#e3e3e3",
+              ]}
+              position={[0, -0.58, 0]}
+            />
+            <OrbitControls
+              key={cameraKey}
+              makeDefault
+              enableDamping={false}
+              minDistance={4}
+              maxDistance={24}
+              maxPolarAngle={Math.PI / 2.08}
+              target={target}
+            />
+          </Canvas>
+        </SceneBoundary>
       </div>
       <div className="scene-tools">
         <select
@@ -199,6 +257,28 @@ export default function Workshop3D({
             </option>
           ))}
         </select>
+        <button
+          disabled={!selectedNode}
+          onClick={() => {
+            setViewNode(selected);
+            setCameraKey((k) => k + 1);
+          }}
+        >
+          Enquadrar componente
+        </button>
+        <label>
+          Abrir camadas
+          <input
+            aria-label="Abrir camadas do componente"
+            type="range"
+            disabled={!selectedNode}
+            min="0"
+            max="1"
+            step="0.1"
+            value={explode}
+            onChange={(e) => setExplode(Number(e.target.value))}
+          />
+        </label>
         <label>
           Separar componentes{" "}
           <input
@@ -227,12 +307,37 @@ export default function Workshop3D({
           onClick={() => {
             setRotation(0);
             setSpread(1);
+            setViewNode("");
+            setExplode(0);
             setCameraKey((k) => k + 1);
           }}
         >
           Redefinir vista
         </button>
       </div>
+      {selectedNode && anatomy && (
+        <section
+          className="component-anatomy"
+          aria-label="Anatomia do componente selecionado"
+        >
+          <div className="scene-inspector" aria-live="polite">
+            <strong>{selectedNode.label}</strong>
+            <p>{selectedNode.detail}</p>
+          </div>
+          <h4>{anatomy.name}</h4>
+          <dl>
+            {anatomy.parts.map(([name, text], i) => (
+              <div key={name}>
+                <dt>
+                  <span>0{i + 1}</span> {name}
+                </dt>
+                <dd>{text}</dd>
+              </div>
+            ))}
+          </dl>
+          <p>{anatomy.note}</p>
+        </section>
+      )}
     </div>
   );
 }
@@ -243,6 +348,7 @@ function StableFlow({
   signature: string;
   speed: number;
   paused: boolean;
+  controlledProgress?: number;
   onArrival: () => void;
 }) {
   const [event] = useState(() => JSON.parse(signature));

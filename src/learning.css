@@ -260,3 +260,190 @@
   font: 10px/1.8 var(--mono);
   color: var(--muted);
 }
+
+.flow-scrubber {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  font: 10px/1.8 var(--mono);
+}
+.flow-scrubber > button {
+  padding: 8px 0;
+  text-align: left;
+}
+.flow-scrubber > button[aria-pressed="true"] {
+  color: var(--dev-accent);
+}
+.flow-scrubber label {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 16px;
+  margin: 10px 0;
+}
+.flow-scrubber input,
+.flow-scrubber label > span {
+  grid-column: 1/-1;
+  width: 100%;
+}
+.flow-scrubber input {
+  accent-color: #298c79;
+}
+.flow-scrubber label > span {
+  color: var(--muted);
+  font-size: 9px;
+}
+.workshop-viewport {
+  min-width: 0;
+}
+.hardware-viewport > .scene-tools {
+  position: static;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--tone-f5f5f3);
+  border-block: 1px solid var(--line);
+}
+.hardware-viewport .scene-tools > span {
+  display: none;
+}
+.hardware-viewport .component-anatomy summary {
+  cursor: pointer;
+  font: 11px/1.9 var(--mono);
+  color: var(--dev-accent);
+}
+.workshop-viewport > .scene-tools {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--tone-f5f5f3);
+  border-block: 1px solid var(--line);
+  padding: 14px;
+  color: var(--tone-1a1a1a);
+}
+.workshop-viewport .scene-tools button {
+  font-size: 10px;
+}
+.workshop-viewport .scene-tools select {
+  max-width: 160px;
+}
+.component-anatomy {
+  padding: 22px;
+  border-bottom: 1px solid var(--line);
+}
+.component-anatomy .scene-inspector {
+  position: static;
+  width: auto;
+  max-width: none;
+  padding: 0 0 18px;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+.component-anatomy .scene-inspector strong {
+  font: 600 12px/1.8 var(--mono);
+}
+.component-anatomy .scene-inspector p {
+  margin-top: 10px;
+}
+.component-anatomy h4 {
+  font: 500 14px/1.6 var(--mono);
+  margin: 12px 0 18px;
+}
+.component-anatomy dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0;
+}
+.component-anatomy dt {
+  font: 11px/1.8 var(--mono);
+  margin-bottom: 10px;
+}
+.component-anatomy dt span {
+  color: var(--dev-accent);
+}
+.component-anatomy dd {
+  margin: 0;
+  font:
+    12px/1.8 "Space Grotesk",
+    sans-serif;
+}
+.component-anatomy > p {
+  font:
+    11px/1.9 "Space Grotesk",
+    sans-serif;
+  color: var(--muted);
+  margin-top: 20px;
+}
+.step-mechanism {
+  border-top: 1px solid var(--line);
+  padding: 24px 18px;
+}
+.step-mechanism h4 {
+  margin-top: 0;
+}
+.step-mechanism p {
+  margin: 14px 0;
+}
+.step-mechanism .observe-step {
+  border-left: 2px solid var(--dev-accent);
+  padding-left: 16px;
+}
+.step-mechanism details {
+  margin-top: 20px;
+}
+.step-mechanism summary {
+  font: 11px/1.8 var(--mono);
+  cursor: pointer;
+  color: var(--dev-accent);
+}
+.state-comparison table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 20px;
+  font: 11px/1.9 var(--mono);
+}
+.state-comparison th,
+.state-comparison td {
+  border-bottom: 1px solid var(--line);
+  padding: 12px;
+  text-align: left;
+  min-width: 120px;
+  vertical-align: top;
+}
+.state-comparison caption {
+  font: 10px/1.9 var(--mono);
+  color: var(--muted);
+  text-align: left;
+  padding-bottom: 12px;
+}
+@media (max-width: 700px) {
+  .component-anatomy {
+    padding: 18px 14px;
+  }
+  .component-anatomy dl {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .workshop-viewport > .scene-tools label {
+    flex-basis: 100%;
+  }
+  .workshop-viewport > .scene-tools {
+    gap: 10px;
+  }
+}
+
+.hardware-viewport > .scene-tools button:last-child,
+.workshop-viewport > .scene-tools button:last-child {
+  display: inline-flex;
+}
+@media (max-width: 700px) {
+  .hardware-viewport > .scene-tools button,
+  .workshop-viewport > .scene-tools button {
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+  .hardware-viewport > .scene-tools select,
+  .workshop-viewport > .scene-tools select {
+    min-height: 40px;
+  }
+}

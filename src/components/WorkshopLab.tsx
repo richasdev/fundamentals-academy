@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Pause, Play, RotateCcw, SkipForward, Undo2 } from "lucide-react";
 import type { ExtendedLabId } from "../content/lessons";
+import { componentRole } from "../content/componentRoles";
 import {
   buildWorkshop,
   defaultSettings,
@@ -18,7 +19,16 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
     [speed, setSpeed] = useState(1),
     [three, setThree] = useState(true),
     [replay, setReplay] = useState(0);
-  const run = useMemo(() => buildWorkshop(id, settings), [id, settings]);
+  const run = useMemo(() => {
+    const built = buildWorkshop(id, settings);
+    return {
+      ...built,
+      nodes: built.nodes.map((node) => ({
+        ...node,
+        detail: componentRole(id, node),
+      })),
+    };
+  }, [id, settings]);
   const step = run.steps[index] || run.steps[0],
     done = index === run.steps.length - 1;
   const signature = `${id}-${JSON.stringify(settings)}-${index}-${replay}`;

@@ -1,5 +1,6 @@
 import type { LabId } from "../content/lessons";
 import { teachingGuides } from "../content/teachingGuides";
+import { componentRole } from "../content/componentRoles";
 import {
   buildWorkshop,
   compileExpression,
@@ -599,6 +600,7 @@ export function lessonFrames(
   if (fs.length !== 3) throw Error(`Aula sem três estados: ${id}/${chapter}`);
   return fs.map((f, i) => ({
     ...f,
+    nodes: f.nodes.map((n) => ({ ...n, detail: componentRole(id, n) })),
     narration: teachingGuides[id][chapter].steps[i],
     step: {
       ...f.step,

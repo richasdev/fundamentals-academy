@@ -2,6 +2,7 @@ import { lessons, type LabId } from "./lessons";
 import { chapterDetails } from "./chapterDetails";
 import { teachingGuides } from "./teachingGuides";
 import { studySessions } from "./studySessions";
+import { mechanisms } from "./mechanisms";
 function words(value: unknown): number {
   if (typeof value === "string")
     return value.trim().split(/\s+/).filter(Boolean).length;
@@ -23,6 +24,7 @@ export function sessionDuration(id: LabId) {
     chapterDetails[id],
     teachingGuides[id],
     studySessions[id],
+    mechanisms[id],
   ]);
   const reading: [number, number] = [
     Math.ceil(wordCount / 220),
