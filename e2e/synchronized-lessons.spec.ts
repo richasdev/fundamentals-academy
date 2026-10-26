@@ -90,7 +90,7 @@ test("anotações e investigações persistem por aula sem concluir a trilha", a
   await page
     .getByRole("button", { name: "Abrir bancada de experimentos" })
     .click();
-  await expect(page.getByRole("button", { name: "PUSH 4" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "PUSH 2" })).toBeVisible();
 });
 
 test("pausa pertence ao passo atual e mensagem perdida não destaca receptor", async ({

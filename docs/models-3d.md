@@ -47,3 +47,9 @@ Durante uma transferência, modelos de HDD podem girar os pratos e deslocar o br
 As três partes da anatomia têm descrições acessíveis no DOM. As mesmas ações são alcançáveis por seletor, botão e slider, sem exigir clicar em uma malha 3D.
 
 Marcadores 01–03 aparecem no componente selecionado quando suas camadas são abertas, correspondendo à legenda de anatomia. São sprites locais orientados para a câmera, sem fontes ou imagens externas.
+
+## Estruturas lógicas específicas
+
+Nas bancadas livres, páginas de banco são blocos de registros com cabeçalho, filas contêm marcadores de processos, e o compilador apresenta a AST derivada da expressão e uma pilha vertical da VM. São estruturas selecionáveis e manipuláveis em 3D. A abertura das partes separa os registros e elementos da pilha. Algumas cenas conceituais anteriores mantêm o HDD como ilustração de armazenamento, com a limitação explícita.
+
+As ligações persistentes das bancadas estendidas são derivadas das mensagens ou da estrutura da AST. O estado visual conserva o snapshot anterior até a entrega. Cada retorno a uma etapa cria uma visita distinta para evitar reutilizar uma chegada anterior. Os valores completos e a comparação ficam disponíveis no painel DOM.

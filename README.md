@@ -36,7 +36,7 @@ Os modelos não emulam uma CPU comercial, um alocador de produção ou uma pilha
 
 Geometrias detalhadas incluem pinos, trilhas de PCB, contatos, chips, indicadores, teclado, portas, baias de disco e ventilação. Veja [as convenções e limitações dos modelos](docs/models-3d.md).
 
-Site público: https://fundamentals-lab-academy.uemurinha.chatgpt.site
+Site com acesso restrito ao proprietário: https://fundamentals-lab-academy.uemurinha.chatgpt.site
 
 Repositório: https://github.com/richasdev/fundamentals-academy
 
@@ -96,3 +96,13 @@ Os nove experimentos usam o mesmo painel limitado à altura da janela: modelo à
 O acompanhamento da câmera vem ativo nas bancadas livres, incluindo CPU, memória e rede. Primeiro enquadra origem, caminho e destino; após a entrega aproxima o componente receptor. Perdas mantêm o caminho interrompido. A órbita interrompe a transição atual, e `Acompanhar etapa` libera a câmera até ser reativado. A execução automática em 3D espera a entrega e reserva tempo para a aproximação antes da próxima transição; o modo 2D continua independente do renderizador.
 
 `ExploreStage.tsx` compartilha o layout e recebe o readout dos modelos clássicos. `hardwareCameraShot` trabalha com as coordenadas reais já expandidas dos fluxos e inclui pontos intermediários como a ALU. `e2e/explore-player.spec.ts` verifica as nove bancadas em desktop e celular, câmera livre, perda e autoplay.
+
+## Experiências orientadas por mecanismo
+
+Explorar apresenta o estado anterior até a chegada da mensagem, com comparação de snapshots e evidências no painel lateral. As ligações das seis bancadas estendidas vêm dos eventos reais, em vez de uma estrela genérica. Páginas, filas, processos, AST e pilha usam estruturas lógicas 3D selecionáveis; os modelos físicos permanecem nas experiências de hardware.
+
+Cada investigação das aulas pode preparar parâmetros e manter o roteiro junto da bancada. A seleção também está disponível em Explorar. Atividades que incluem desenhos e cálculos manuais continuam identificadas como tal. O modo estudo recolhe a navegação; o laboratório oculto pausa o avanço automático.
+
+Novos cenários: NOT com NAND e meio somador; soma binária com transporte; liberação de blocos por endereço e fragmentação; P1 bloqueado por I/O com linha do tempo; estados das pontas TCP; transferência atômica com COMMIT/ROLLBACK; AST real com associação entre nós e instruções; TTL e versão de cache; COMMIT assim que a maioria 2/3 confirma, com replicação restante posterior. Não são emuladores completos, motores SQL ou implementações de consenso de produção.
+
+Novas conclusões exigem três checagens conceituais, um experimento concluído e o desafio. Conclusões antigas continuam válidas. Exportações versão 1 passam a incluir evidências opcionais; importações antigas continuam aceitas. A publicação foi mantida sem acesso público conforme pedido do proprietário; este trabalho é local e no GitHub, sem republicação automática.

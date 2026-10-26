@@ -58,6 +58,7 @@ test("fluxos identificam origem, destino e handshake sem alterar o estado ao rev
   await expect(page.locator(".flow-readout strong")).toContainText(
     "Servidor → Cliente",
   );
+  await expect(page.locator(".flow-delivery.received")).toBeVisible();
   const status = await page.locator(".status-bar").textContent();
   await page.getByRole("button", { name: "Rever fluxo" }).click();
   await expect(page.locator(".status-bar")).toHaveText(status || "");
@@ -131,7 +132,16 @@ test("CPU executa, desafio salva progresso e navegação funciona", async ({
             .state.completed,
       ),
     )
-    .toContain("cpu");
+    .not.toContain("cpu");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          JSON.parse(localStorage.getItem("fundamentals-progress-v1") || "{}")
+            .state.evidence.cpu.challenge,
+      ),
+    )
+    .toBe(true);
   await page.getByRole("tab", { name: "Memória" }).click();
   await page.getByRole("button", { name: "malloc(4)" }).click();
   await expect(page.locator(".status-bar")).toContainText("0x00");

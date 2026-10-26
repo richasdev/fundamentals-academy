@@ -91,7 +91,17 @@ for (const [id, title, answer] of [
               .state?.completed,
         ),
       )
-      .toContain(id);
+      .not.toContain(id);
+    await expect
+      .poll(() =>
+        page.evaluate(
+          (id) =>
+            JSON.parse(localStorage.getItem("fundamentals-progress-v1") || "{}")
+              .state.evidence[id].challenge,
+          id,
+        ),
+      )
+      .toBe(true);
     await expect(page.locator("body")).toHaveJSProperty(
       "scrollWidth",
       await page.evaluate(() => innerWidth),
