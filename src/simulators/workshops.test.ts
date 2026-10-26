@@ -132,9 +132,23 @@ describe("modelos das novas bancadas", () => {
       expect(run.steps.at(-1)?.values.api).toBe(
         offline === 2 ? "503 · pendente" : "COMMIT x=42",
       );
-      expect(
-        run.steps.slice(0, -1).some((s) => s.values.api.includes("COMMIT")),
-      ).toBe(false);
+      const commit = run.steps.findIndex((s) => s.title === "COMMIT");
+      expect(commit >= 0).toBe(offline < 2);
+      if (commit >= 0) {
+        expect(run.steps[commit - 1].title).toBe("Receber ACK");
+        expect(run.steps[commit - 1].values.leader).toContain("2/3");
+        expect(
+          run.steps
+            .slice(0, commit)
+            .some((s) => s.values.api.includes("COMMIT")),
+        ).toBe(false);
+        if (offline === 0)
+          expect(
+            run.steps
+              .slice(commit + 1)
+              .some((s) => s.title === "Replicar em 2"),
+          ).toBe(true);
+      }
     }
   });
   it("cada fluxo aponta para um nó existente e a geração é determinística", () => {

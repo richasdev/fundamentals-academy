@@ -7,6 +7,7 @@ export interface FlowEvent {
   source: string;
   target: string;
   receiver?: string;
+  sender?: string;
   payload: string;
   explanation: string;
   via?: Vec3[];

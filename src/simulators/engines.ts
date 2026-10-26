@@ -79,6 +79,7 @@ export function memoryAction(
   s: MemoryState,
   action: "push" | "pop" | "alloc" | "free",
   size = 4,
+  freeAddress?: number,
 ): MemoryState {
   const n = {
     ...s,
@@ -115,7 +116,13 @@ export function memoryAction(
   if (action === "free") {
     if (!s.blocks.length)
       return { ...s, log: "Heap vazio: nada para liberar." };
-    const b = n.blocks.pop()!;
+    const index =
+      freeAddress === undefined
+        ? n.blocks.length - 1
+        : n.blocks.findIndex((b) => b.address === freeAddress);
+    if (index < 0)
+      return { ...s, log: "Endereço não corresponde a um bloco alocado." };
+    const [b] = n.blocks.splice(index, 1);
     n.log = `free(0x${b.address.toString(16)}) · ${b.size} bytes liberados.`;
   }
   return n;
@@ -176,3 +183,53 @@ export const networkModel = (
     };
   },
 });
+
+export function memorySpace(s: MemoryState) {
+  const ceiling = 32 - s.stack.length;
+  const blocks = [...s.blocks].sort((a, b) => a.address - b.address);
+  let end = 0,
+    largest = 0,
+    free = 0;
+  for (const b of blocks) {
+    const hole = b.address - end;
+    largest = Math.max(largest, hole);
+    free += hole;
+    end = b.address + b.size;
+  }
+  const tail = ceiling - end;
+  return { free: free + tail, largest: Math.max(largest, tail) };
+}
+export function networkEndpoints(s: NetworkState) {
+  if (s.stage < 2)
+    return { cliente: "DNS pendente", servidor: "LISTEN", camada: "DNS" };
+  if (s.stage === 2)
+    return {
+      cliente: s.retried
+        ? "Timeout concluído · retransmissão pendente"
+        : "IP conhecido",
+      servidor: "LISTEN",
+      camada: "TCP",
+    };
+  if (s.stage === 3)
+    return {
+      cliente: "SYN-SENT",
+      servidor: "SYN recebido · responde SYN-ACK",
+      camada: "TCP",
+    };
+  if (s.stage === 4)
+    return {
+      cliente: "SYN-ACK recebido · prepara ACK",
+      servidor: "SYN-RECEIVED",
+      camada: "TCP",
+    };
+  return {
+    cliente: s.stage === 7 ? "Resposta HTTP recebida" : "ESTABLISHED",
+    servidor:
+      s.stage === 5
+        ? "ESTABLISHED · GET recebido"
+        : s.stage === 6
+          ? "Processando GET"
+          : "Resposta enviada",
+    camada: "HTTP sobre TCP",
+  };
+}

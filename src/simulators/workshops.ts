@@ -11,6 +11,13 @@ export type Settings = {
   indexed: boolean;
   key: number;
   expression: string;
+  io?: boolean;
+  ttl?: number;
+  interval?: number;
+  originVersion?: number;
+  transaction?: boolean;
+  abort?: boolean;
+  logicMode?: "gate" | "not" | "half";
 };
 export const defaultSettings: Settings = {
   a: 1,
@@ -28,6 +35,8 @@ export type WorkshopNode = {
   label: string;
   detail: string;
   position: Vec3;
+  visual?: "page" | "queue" | "process" | "ast" | "stack" | "terminal";
+  entries?: string[];
   kind: "control" | "server" | "cpu" | "register" | "storage";
 };
 export type WorkshopStep = {
@@ -36,11 +45,13 @@ export type WorkshopStep = {
   values: Record<string, string>;
   flow?: FlowEvent;
   result?: string;
+  timeline?: { process: string; start: number; end: number }[];
 };
 export type WorkshopRun = {
   nodes: WorkshopNode[];
   steps: WorkshopStep[];
   code: string;
+  edges?: [string, string][];
   error?: string;
 };
 const node = (
@@ -61,12 +72,15 @@ export function gateValue(gate: Gate, a: number, b: number) {
         : a ^ b;
 }
 
-type Ast = { value: number } | { op: "+" | "*"; left: Ast; right: Ast };
-type Instruction = { op: "PUSH"; value: number } | { op: "ADD" | "MUL" };
+export type Ast = { value: number } | { op: "+" | "*"; left: Ast; right: Ast };
+type Instruction = ({ op: "PUSH"; value: number } | { op: "ADD" | "MUL" }) & {
+  origin?: string;
+};
 export function compileExpression(source: string): {
   tokens: string[];
   ast: string;
   instructions: Instruction[];
+  tree: Ast;
 } {
   if (!source.trim() || source.length > 60 || /[^\d+*()\s]/.test(source))
     throw Error("Use até 60 caracteres: números, +, *, espaços e parênteses.");
@@ -106,14 +120,14 @@ export function compileExpression(source: string): {
       "Há tokens fora da expressão. Verifique operadores e parênteses.",
     );
   const instructions: Instruction[] = [];
-  function emit(ast: Ast): string {
+  function emit(ast: Ast, path = "root"): string {
     if ("value" in ast) {
-      instructions.push({ op: "PUSH", value: ast.value });
+      instructions.push({ op: "PUSH", value: ast.value, origin: path });
       return String(ast.value);
     }
-    const left = emit(ast.left),
-      right = emit(ast.right);
-    instructions.push({ op: ast.op === "+" ? "ADD" : "MUL" });
+    const left = emit(ast.left, path + "l"),
+      right = emit(ast.right, path + "r");
+    instructions.push({ op: ast.op === "+" ? "ADD" : "MUL", origin: path });
     return `${ast.op === "+" ? "ADD" : "MUL"}(${left}, ${right})`;
   }
   const ast = emit(tree);
@@ -131,7 +145,7 @@ export function compileExpression(source: string): {
       check.push(n);
     }
   }
-  return { tokens, ast, instructions };
+  return { tokens, ast, instructions, tree };
 }
 
 export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
@@ -139,6 +153,7 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
   const steps: WorkshopStep[] = [];
   let values: Record<string, string> = {};
   let code = "";
+  let timeline: { process: string; start: number; end: number }[] = [];
   function add(
     title: string,
     log: string,
@@ -160,6 +175,7 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
     steps.push({
       title,
       log,
+      timeline: timeline.length ? timeline.map((t) => ({ ...t })) : undefined,
       values: { ...values },
       result,
       flow:
@@ -179,6 +195,7 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
                   ]
                 : end,
               source: origin.label,
+              sender: origin.id,
               target: lost ? "Destino indisponível" : target.label,
               payload,
               explanation: log,
@@ -223,39 +240,144 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
         "register",
       ),
     ];
-    const y = gateValue(p.gate, p.a, p.b);
-    values = {
-      a: String(p.a),
-      b: String(p.b),
-      gate: "aguarda sinais",
-      out: "?",
-    };
-    add(
-      "Circuito pronto",
-      "Escolha entradas e porta. A saída será calculada depois da propagação didática.",
-    );
-    add("Entrada A", `A porta recebe A=${p.a}.`, "a", "gate", `A = ${p.a}`, {
-      gate: `A=${p.a}`,
-    });
-    add(
-      "Entrada B",
-      `A porta recebe B=${p.b}; a função ${p.gate} já pode ser avaliada.`,
-      "b",
-      "gate",
-      `B = ${p.b}`,
-      { gate: `A=${p.a}, B=${p.b}` },
-    );
-    add(
-      "Resultado",
-      `${p.gate}(${p.a}, ${p.b}) = ${y}. Confira a tabela-verdade.`,
-      "gate",
-      "out",
-      `Y = ${y}`,
-      { gate: String(y), out: String(y) },
-      false,
-      `Y = ${y}`,
-    );
-    code = `Y = ${p.gate}(A, B)\nA = ${p.a}\nB = ${p.b}\n\n${[0, 1].flatMap((a) => [0, 1].map((b) => `${a} ${b} → ${gateValue(p.gate, a, b)}`)).join("\n")}`;
+    if (p.logicMode === "not") {
+      nodes[1] = { ...nodes[1], label: "CÓPIA DE A" };
+      values = { a: String(p.a), b: String(p.a), gate: "aguarda", out: "?" };
+      add(
+        "NOT com NAND",
+        "As duas entradas da NAND recebem o mesmo A. Não há armazenamento entre as entradas.",
+      );
+      add(
+        "Primeira entrada",
+        `A=${p.a} chega ao primeiro terminal.`,
+        "a",
+        "gate",
+        `A=${p.a}`,
+        { gate: `A=${p.a}` },
+      );
+      add(
+        "Segunda entrada",
+        `O mesmo A=${p.a} chega ao segundo terminal.`,
+        "b",
+        "gate",
+        `A=${p.a}`,
+        { gate: `A=${p.a}, A=${p.a}` },
+      );
+      add(
+        "Inverter",
+        `NAND(${p.a},${p.a})=${1 - p.a}: a saída é NOT A.`,
+        "gate",
+        "out",
+        `NOT A=${1 - p.a}`,
+        { out: String(1 - p.a), gate: String(1 - p.a) },
+        false,
+        `NOT A = ${1 - p.a}`,
+      );
+      code = "NOT A = NAND(A, A)";
+    } else if (p.logicMode === "half") {
+      nodes[2] = { ...nodes[2], label: "XOR · SOMA" };
+      nodes.push(
+        node(
+          "carry",
+          "AND · CARRY",
+          "O transporte indica que o resultado precisa de um segundo bit.",
+          0,
+          2,
+          "cpu",
+        ),
+      );
+      values = {
+        a: String(p.a),
+        b: String(p.b),
+        gate: "aguarda",
+        carry: "aguarda",
+        out: "?",
+      };
+      add(
+        "Meio somador",
+        "XOR calcula o bit de soma; AND calcula o transporte. Duas funções combinacionais recebem A e B.",
+      );
+      add("Entrada A", `A=${p.a} chega à XOR.`, "a", "gate", `A=${p.a}`, {
+        gate: `A=${p.a}`,
+      });
+      add(
+        "Entrada B",
+        `B=${p.b} completa a entrada da XOR.`,
+        "b",
+        "gate",
+        `B=${p.b}`,
+        { gate: `soma=${p.a ^ p.b}` },
+      );
+      add(
+        "Carry: entrada A",
+        `A=${p.a} também alimenta a AND.`,
+        "a",
+        "carry",
+        `A=${p.a}`,
+        { carry: `A=${p.a}` },
+      );
+      add(
+        "Carry: entrada B",
+        `AND(${p.a},${p.b})=${p.a & p.b}.`,
+        "b",
+        "carry",
+        `B=${p.b}`,
+        { carry: String(p.a & p.b) },
+      );
+      add(
+        "Bit de soma",
+        `XOR(${p.a},${p.b})=${p.a ^ p.b}.`,
+        "gate",
+        "out",
+        `soma=${p.a ^ p.b}`,
+        { out: `soma=${p.a ^ p.b}` },
+      );
+      add(
+        "Resultado de dois bits",
+        `${p.a}+${p.b} = ${(p.a & p.b) * 2 + (p.a ^ p.b)}. Leia carry seguido de soma.`,
+        "carry",
+        "out",
+        `carry=${p.a & p.b}`,
+        { out: `${p.a & p.b}${p.a ^ p.b}₂` },
+        false,
+        `${p.a + p.b} = ${p.a & p.b}${p.a ^ p.b}₂`,
+      );
+      code = "soma = A XOR B\ncarry = A AND B\nresultado = carry × 2 + soma";
+    } else {
+      const y = gateValue(p.gate, p.a, p.b);
+      values = {
+        a: String(p.a),
+        b: String(p.b),
+        gate: "aguarda sinais",
+        out: "?",
+      };
+      add(
+        "Circuito pronto",
+        "Escolha entradas e porta. A saída será calculada depois da propagação didática.",
+      );
+      add("Entrada A", `A porta recebe A=${p.a}.`, "a", "gate", `A = ${p.a}`, {
+        gate: `A=${p.a}`,
+      });
+      add(
+        "Entrada B",
+        `A porta recebe B=${p.b}; a função ${p.gate} já pode ser avaliada.`,
+        "b",
+        "gate",
+        `B = ${p.b}`,
+        { gate: `A=${p.a}, B=${p.b}` },
+      );
+      add(
+        "Resultado",
+        `${p.gate}(${p.a}, ${p.b}) = ${y}. Confira a tabela-verdade.`,
+        "gate",
+        "out",
+        `Y = ${y}`,
+        { gate: String(y), out: String(y) },
+        false,
+        `Y = ${y}`,
+      );
+      code = `Y = ${p.gate}(A, B)\nA = ${p.a}\nB = ${p.b}\n\n${[0, 1].flatMap((a) => [0, 1].map((b) => `${a} ${b} → ${gateValue(p.gate, a, b)}`)).join("\n")}`;
+    }
   }
   if (id === "os") {
     nodes = [
@@ -299,6 +421,26 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
         "register",
       ),
     ];
+    nodes = nodes.map((n) => ({
+      ...n,
+      visual:
+        n.id === "queue"
+          ? "queue"
+          : n.id.startsWith("p")
+            ? "process"
+            : undefined,
+    }));
+    if (p.io)
+      nodes.push({
+        ...node(
+          "io",
+          "ESPERA DE I/O",
+          "P1 aguarda uma leitura por duas unidades; não disputa CPU durante a espera.",
+          -3,
+          2,
+        ),
+        visual: "queue",
+      });
     const remaining = [3, 2, 1],
       queue = [0, 1, 2];
     let time = 0;
@@ -310,9 +452,32 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
       p3: "1 restante",
     };
     add("Fila pronta", "Todos chegam em t=0. A fila inicial é P1 → P2 → P3.");
-    while (queue.length) {
+    let blockedUntil: number | null = null,
+      blockedOnce = false;
+    while (queue.length || blockedUntil !== null) {
+      if (blockedUntil !== null && (!queue.length || time >= blockedUntil)) {
+        time = Math.max(time, blockedUntil);
+        blockedUntil = null;
+        queue.push(0);
+        add(
+          "I/O concluído",
+          `t=${time}: a leitura terminou. P1 volta à fila de prontos.`,
+          "io",
+          "queue",
+          "P1 pronto",
+          {
+            io: "vazia",
+            p1: `${remaining[0]} restantes`,
+            queue: queue.map((n) => `P${n + 1}`).join(", "),
+          },
+        );
+      }
       const i = queue.shift()!;
-      const used = Math.min(p.quantum, remaining[i]);
+      const used = Math.min(
+        p.quantum,
+        remaining[i],
+        p.io && i === 0 && !blockedOnce ? 1 : Infinity,
+      );
       add(
         `Despachar P${i + 1}`,
         `O escalonador entrega a CPU a P${i + 1} por até ${p.quantum} unidades.`,
@@ -324,8 +489,27 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
           queue: queue.map((n) => `P${n + 1}`).join(", ") || "vazia",
         },
       );
+      timeline.push({ process: `P${i + 1}`, start: time, end: time + used });
       remaining[i] -= used;
       time += used;
+      if (p.io && i === 0 && !blockedOnce && remaining[i]) {
+        blockedOnce = true;
+        blockedUntil = time + 2;
+        add(
+          "P1 bloqueado",
+          `t=${time}: P1 solicita leitura e espera até t=${blockedUntil}. A CPU fica disponível para outro processo.`,
+          "cpu",
+          "io",
+          "read() · aguardar",
+          {
+            cpu: "ocioso",
+            p1: "bloqueado",
+            io: `P1 até t=${blockedUntil}`,
+            queue: queue.map((n) => `P${n + 1}`).join(", ") || "vazia",
+          },
+        );
+        continue;
+      }
       if (remaining[i]) queue.push(i);
       add(
         remaining[i] ? "Quantum encerrado" : `P${i + 1} terminou`,
@@ -339,7 +523,9 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
           queue: queue.map((n) => `P${n + 1}`).join(", ") || "vazia",
         },
         false,
-        queue.length ? undefined : `Todos concluídos em t=${time}`,
+        queue.length || blockedUntil !== null
+          ? undefined
+          : `Todos concluídos em t=${time}`,
       );
     }
     code = `quantum = ${p.quantum}\nchegada = [0, 0, 0]\ndemanda = [3, 2, 1]\n\np = fila.shift()\nexecutar(min(quantum, restante))\nse restante > 0:\n  fila.push(p)`;
@@ -390,7 +576,10 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
       "Duas leituras do mesmo recurso. O cache começa vazio.",
     );
     let cached = false,
-      originRequests = 0;
+      originRequests = 0,
+      hits = 0,
+      cachedAt = 0,
+      storedVersion = 1;
     for (let request = 1; request <= 2; request++) {
       add(
         `Requisição ${request}`,
@@ -399,14 +588,31 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
         "edge",
         `GET / #${request}`,
       );
+      const now = (request - 1) * (p.interval ?? 10),
+        version = request === 1 ? 1 : (p.originVersion ?? 1);
+      if (p.cache && cached && now - cachedAt >= (p.ttl ?? 60)) {
+        add(
+          "Cache expirou",
+          `t=${now}s: a idade ${now - cachedAt}s atingiu TTL=${p.ttl ?? 60}s. A borda precisa consultar a origem.`,
+          undefined,
+          undefined,
+          "",
+          { edge: "EXPIRADO" },
+        );
+        cached = false;
+      }
       if (p.cache && cached) {
+        hits++;
         add(
           "Cache HIT",
-          "Resposta válida encontrada; nenhuma instância é consultada.",
+          `t=${now}s: resposta v${storedVersion} ainda válida por TTL. ${version !== storedVersion ? "A origem mudou, mas a cópia ainda não expirou." : "Nenhuma instância é consultada."}`,
           "edge",
           "client",
-          "200 OK · HIT",
-          { client: "200 OK", edge: "HIT · resposta em cache" },
+          `200 OK · HIT · v${storedVersion}`,
+          {
+            client: `200 OK · v${storedVersion}`,
+            edge: `HIT · v${storedVersion}`,
+          },
         );
       } else {
         const dest = p.offline ? "b" : originRequests % 2 === 0 ? "a" : "b";
@@ -423,21 +629,27 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
           },
         );
         cached = p.cache;
+        cachedAt = now;
+        storedVersion = version;
         add(
           "Resposta da aplicação",
           "A instância devolve o recurso público. A borda armazena apenas se o cache estiver habilitado.",
           dest,
           "edge",
-          "200 OK · corpo HTML",
-          { edge: p.cache ? "resposta armazenada" : "encaminhar" },
+          `200 OK · corpo HTML v${version}`,
+          {
+            edge: p.cache
+              ? `v${version} armazenada em t=${now}s`
+              : `encaminhar v${version}`,
+          },
         );
         add(
           "Entregar ao cliente",
           "O cliente recebe a resposta da aplicação pela borda.",
           "edge",
           "client",
-          "200 OK · origem",
-          { client: "200 OK" },
+          `200 OK · origem v${version}`,
+          { client: `200 OK · v${version}` },
         );
       }
     }
@@ -454,6 +666,111 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
     code = `GET / × 2\ncache: ${p.cache ? "ON" : "OFF"}\nsaudáveis: ${p.offline ? "[B]" : "[A, B]"}\n\nse cache válido: responder\nsenão: escolher próximo saudável\n  buscar → armazenar → responder`;
   }
   if (id === "database") {
+    if (p.transaction) {
+      nodes = [
+        {
+          ...node(
+            "transaction",
+            "TRANSAÇÃO",
+            "Agrupa as alterações; só COMMIT torna os dois saldos visíveis em conjunto.",
+            -3,
+            0,
+          ),
+          visual: "terminal",
+        },
+        {
+          ...node(
+            "buffer",
+            "MUDANÇAS PENDENTES",
+            "Guarda a proposta antes da confirmação.",
+            0,
+            0,
+          ),
+          visual: "terminal",
+        },
+        {
+          ...node(
+            "a",
+            "CONTA A",
+            "Saldo confirmado da conta A.",
+            3,
+            -1.4,
+            "storage",
+          ),
+          visual: "page",
+          entries: ["saldo"],
+        },
+        {
+          ...node(
+            "b",
+            "CONTA B",
+            "Saldo confirmado da conta B.",
+            3,
+            1.4,
+            "storage",
+          ),
+          visual: "page",
+          entries: ["saldo"],
+        },
+      ];
+      values = {
+        transaction: "sem transação",
+        buffer: "vazio",
+        a: "100 confirmados",
+        b: "50 confirmados",
+      };
+      add("Saldos iniciais", "A=100 e B=50; total confirmado 150.");
+      add(
+        "BEGIN",
+        "A transação começa. Ainda não há alteração nos saldos confirmados.",
+        "transaction",
+        "buffer",
+        "BEGIN",
+        { transaction: "em andamento", buffer: "transação aberta" },
+      );
+      add(
+        "Preparar débito",
+        "A proposta reduz A para 90. Outras leituras continuam vendo o saldo confirmado 100 neste modelo.",
+        "a",
+        "buffer",
+        "A: 100 → 90",
+        { buffer: "A=90 pendente; B=50" },
+      );
+      add(
+        "Preparar crédito",
+        "A proposta acrescenta 10 em B. O conjunto pendente é A=90, B=60, total 150.",
+        "b",
+        "buffer",
+        "B: 50 → 60",
+        { buffer: "A=90; B=60 · pendentes" },
+      );
+      add(
+        p.abort ? "ROLLBACK" : "COMMIT",
+        p.abort
+          ? "A falha ocorreu antes de confirmar. As propostas são descartadas; A=100 e B=50 continuam visíveis."
+          : "COMMIT publica as duas alterações juntas. A=90 e B=60; o total confirmado continua 150.",
+        "buffer",
+        "transaction",
+        p.abort ? "descartar proposta" : "confirmar alterações",
+        {
+          transaction: p.abort ? "ROLLBACK" : "COMMIT",
+          buffer: "vazio",
+          a: p.abort ? "100 confirmados" : "90 confirmados",
+          b: p.abort ? "50 confirmados" : "60 confirmados",
+        },
+        false,
+        p.abort ? "ROLLBACK · total 150" : "COMMIT · total 150",
+      );
+      return {
+        nodes,
+        steps,
+        code:
+          "BEGIN;\nUPDATE contas SET saldo = saldo - 10 WHERE id = 'A';\nUPDATE contas SET saldo = saldo + 10 WHERE id = 'B';\n" +
+          (p.abort ? "ROLLBACK;" : "COMMIT;") +
+          "\n\nModelo: atomicidade de duas alterações; sem motor SQL, WAL ou níveis de isolamento reais.",
+      };
+    }
+
     nodes = [
       node(
         "query",
@@ -474,6 +791,18 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
       node("b", "PÁGINA B", "Registros com ids 8, 10 e 12.", 3, 0, "storage"),
       node("c", "PÁGINA C", "Registros com ids 16, 18 e 20.", 3, 2, "storage"),
     ];
+    nodes = nodes.map((n) => ({
+      ...n,
+      visual: n.kind === "storage" ? "page" : "terminal",
+      entries:
+        n.id === "a"
+          ? ["2", "4", "6"]
+          : n.id === "b"
+            ? ["8", "10", "12"]
+            : n.id === "c"
+              ? ["16", "18", "20"]
+              : undefined,
+    }));
     const pages = [
       [2, 4, 6],
       [8, 10, 12],
@@ -585,6 +914,55 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
         error: (error as Error).message,
       };
     }
+    nodes = nodes.map((n) => ({
+      ...n,
+      visual: n.id === "vm" ? "stack" : "terminal",
+    }));
+    const treeNodes: WorkshopNode[] = [];
+    const treeEdges: [string, string][] = [];
+    function place(
+      tree: Ast,
+      path: string,
+      x: number,
+      z: number,
+      width: number,
+    ) {
+      const id = `ast-${path}`;
+      treeNodes.push({
+        ...node(
+          id,
+          "value" in tree ? String(tree.value) : tree.op,
+          "Nó da árvore sintática; selecione para identificar a subexpressão.",
+          x,
+          z,
+        ),
+        visual: "ast",
+      });
+      if ("op" in tree) {
+        for (const [child, suffix, offset] of [
+          [tree.left, "l", -width],
+          [tree.right, "r", width],
+        ] as const) {
+          treeEdges.push([id, `ast-${path + suffix}`]);
+          place(child, path + suffix, x + offset, z + 1.1, width / 2);
+        }
+      }
+    }
+    place(compiled.tree, "root", 0, 0, 2);
+    // The tree is revealed with parsing; the four phase modules remain selectable.
+    nodes.push(...treeNodes);
+    nodes = nodes.map((n) =>
+      n.id === "source"
+        ? { ...n, position: [-4, 0, -2.6] }
+        : n.id === "lexer"
+          ? { ...n, position: [-1.4, 0, -2.6] }
+          : n.id === "parser"
+            ? { ...n, position: [1.3, 0, -2.6] }
+            : n.id === "vm"
+              ? { ...n, position: [4, 0, -0.3] }
+              : n,
+    );
+    for (const n of treeNodes) values[n.id] = "aguarda parser";
     add(
       "Análise léxica",
       "O lexer reconhece números e símbolos e remove os espaços entre tokens.",
@@ -599,7 +977,10 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
       "lexer",
       "parser",
       "tokens → AST",
-      { parser: compiled.ast },
+      {
+        parser: compiled.ast,
+        ...Object.fromEntries(treeNodes.map((n) => [n.id, n.label])),
+      },
     );
     add(
       "Gerar bytecode",
@@ -625,7 +1006,7 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
       add(
         `VM · ${i + 1}`,
         `${payload}; pilha [${stack.join(", ")}].`,
-        "parser",
+        `ast-${instruction.origin}`,
         "vm",
         payload,
         { vm: `[${stack.join(", ")}]` },
@@ -635,7 +1016,12 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
           : undefined,
       );
     });
-    code = `TOKENS\n${compiled.tokens.join(" · ")}\n\nAST\n${compiled.ast}\n\nBYTECODE\n${compiled.instructions.map((i) => (i.op === "PUSH" ? `PUSH ${i.value}` : i.op)).join("\n")}`;
+    return {
+      nodes,
+      steps,
+      code: `TOKENS\n${compiled.tokens.join(" · ")}\n\nAST\n${compiled.ast}\n\nBYTECODE\n${compiled.instructions.map((i) => (i.op === "PUSH" ? `PUSH ${i.value}` : i.op)).join("\n")}`,
+      edges: treeEdges,
+    };
   }
   if (id === "architecture") {
     nodes = [
@@ -691,6 +1077,7 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
       { leader: "x=42 · ACKs 1/3", api: "aguarda quórum" },
     );
     let acks = 1;
+    let confirmed = false;
     for (let replica = 1; replica <= 2; replica++) {
       const down = p.offline >= replica;
       add(
@@ -712,18 +1099,29 @@ export function buildWorkshop(id: ExtendedLabId, p: Settings): WorkshopRun {
           `r${replica}`,
           "leader",
           `ACK x=42 · ${acks}/3`,
-          { leader: `x=42 · ACKs ${acks}/3` },
+          { leader: `${confirmed ? "COMMIT" : "x=42"} · ACKs ${acks}/3` },
         );
+        if (acks >= 2 && !confirmed) {
+          confirmed = true;
+          add(
+            "COMMIT",
+            "A maioria 2/3 confirmou. O cliente recebe sucesso agora; a réplica restante pode continuar em seguida.",
+            "leader",
+            "api",
+            "200 OK · COMMIT x=42",
+            { api: "COMMIT x=42", leader: `COMMIT · ${acks}/3` },
+          );
+        }
       }
     }
     const committed = acks >= 2;
     add(
-      committed ? "COMMIT" : "Sem quórum",
+      committed ? "Replicação concluída" : "Sem quórum",
       committed
         ? "A maioria confirmou. A API pode devolver sucesso."
         : "Só o líder confirmou; a escrita fica pendente. Não é seguro prometer COMMIT.",
-      "leader",
-      "api",
+      committed ? undefined : "leader",
+      committed ? undefined : "api",
       committed ? "200 OK · COMMIT x=42" : "503 · sem quórum",
       {
         api: committed ? "COMMIT x=42" : "503 · pendente",
