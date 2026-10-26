@@ -1,5 +1,16 @@
+import { PracticeContext, SimulationActive } from "./PracticeGuide";
+import { preparePractice } from "../content/practice";
+import { presentedValues, flowEdges } from "../simulators/presentation";
+import StateEvidence from "./StateEvidence";
 import ExploreStage from "./ExploreStage";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useContext,
+} from "react";
 import { Pause, Play, RotateCcw, SkipForward, Undo2 } from "lucide-react";
 import type { ExtendedLabId } from "../content/lessons";
 import { componentRole } from "../content/componentRoles";
@@ -11,7 +22,15 @@ import {
   type Settings,
 } from "../simulators/workshops";
 const Workshop3D = lazy(() => import("./Workshop3D"));
-export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
+export default function WorkshopLab({
+  id,
+  onComplete,
+}: {
+  id: ExtendedLabId;
+  onComplete?: () => void;
+}) {
+  const practice = useContext(PracticeContext);
+  const active = useContext(SimulationActive);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [expression, setExpression] = useState(defaultSettings.expression);
   const [index, setIndex] = useState(0),
@@ -32,9 +51,30 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
   }, [id, settings]);
   const step = run.steps[index] || run.steps[0],
     done = index === run.steps.length - 1;
-  const signature = `${id}-${JSON.stringify(settings)}-${index}-${replay}`;
+  const [visit, setVisit] = useState({ index, serial: 0 });
+  if (visit.index !== index) setVisit({ index, serial: visit.serial + 1 });
+  const signature = `${id}-${JSON.stringify(settings)}-${index}-${visit.serial}-${replay}`;
   const [arrival, setArrival] = useState("");
   const arrived = arrival === signature;
+  const previous = run.steps[Math.max(0, index - 1)].values;
+  const complete = arrived || !three || !step.flow;
+  const displayValues = presentedValues(previous, step, complete);
+  const displayStep = { ...step, values: displayValues };
+  const edges = [...flowEdges(run.nodes, run.steps), ...(run.edges || [])];
+  useEffect(() => {
+    if (practice) {
+      const patch = preparePractice(id, practice.chapter, practice.experiment);
+      setSettings({ ...defaultSettings, ...patch });
+      if (patch.expression) setExpression(patch.expression);
+      setIndex(0);
+      setPlaying(false);
+      setPaused(false);
+      setReplay((r) => r + 1);
+    }
+  }, [practice, id]);
+  useEffect(() => {
+    if (done && complete && !run.error) onComplete?.();
+  }, [done, complete, run.error, onComplete]);
   const configure = (patch: Partial<Settings>) => {
     setPlaying(false);
     setPaused(false);
@@ -42,14 +82,20 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
     setSettings((s) => ({ ...s, ...patch }));
   };
   useEffect(() => {
-    if (!playing || done || run.error || (three && step.flow && !arrived))
+    if (
+      !active ||
+      !playing ||
+      done ||
+      run.error ||
+      (three && step.flow && !arrived)
+    )
       return;
     const timer = window.setTimeout(
       () => setIndex((n) => Math.min(n + 1, run.steps.length - 1)),
       three && step.flow ? 650 + 400 / speed : 1200 / speed,
     );
     return () => clearTimeout(timer);
-  }, [playing, done, index, speed, run, three, step.flow, arrived]);
+  }, [playing, done, index, speed, run, three, step.flow, arrived, active]);
   const reset = () => {
     setIndex(0);
     setPlaying(false);
@@ -77,9 +123,10 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
                   autoCamera
                   compact
                   nodes={run.nodes}
-                  step={step}
+                  step={displayStep}
+                  edges={edges}
                   speed={speed}
-                  paused={paused}
+                  paused={paused || !active}
                   replay={signature}
                   onArrival={() => setArrival(signature)}
                   arrived={arrived}
@@ -98,7 +145,7 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
                     }
                   >
                     <span>{n.label}</span>
-                    <strong>{step.values[n.id]}</strong>
+                    <strong>{displayValues[n.id]}</strong>
                     <p>{n.detail}</p>
                   </article>
                 ))}
@@ -111,8 +158,10 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
             <span className="status-index">
               {String(index).padStart(2, "0")}
             </span>
-            {step.log}
-            {step.result && <strong>{step.result}</strong>}
+            {!complete && step.flow
+              ? `Em trânsito: ${step.flow.source} → ${step.flow.target}. Aguarde a entrega para observar a mudança.`
+              : step.log}
+            {complete && step.result && <strong>{step.result}</strong>}
           </div>
         }
         controls={
@@ -169,6 +218,44 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
           </div>
         }
       >
+        <StateEvidence
+          values={Object.fromEntries(
+            run.nodes.map((n) => [n.label, displayValues[n.id] || "—"]),
+          )}
+          before={Object.fromEntries(
+            run.nodes.map((n) => [n.label, previous[n.id] || "—"]),
+          )}
+          pending={!complete}
+        />
+        {id === "os" &&
+          (complete
+            ? step.timeline
+            : run.steps[Math.max(0, index - 1)].timeline) && (
+            <section
+              className="process-timeline"
+              aria-label="Linha do tempo da CPU"
+            >
+              <h4>Quem usou a CPU?</h4>
+              <ol>
+                {(complete
+                  ? step.timeline
+                  : run.steps[Math.max(0, index - 1)].timeline)!.map(
+                  (turn, i) => (
+                    <li key={i}>
+                      <strong>{turn.process}</strong>
+                      <span>
+                        t={turn.start} → {turn.end}
+                      </span>
+                    </li>
+                  ),
+                )}
+              </ol>
+              <p>
+                Somente períodos de execução ocupam esta linha. Espera de I/O
+                libera a CPU.
+              </p>
+            </section>
+          )}
         <div className="workshop-state">
           <div className="workshop-flow" aria-live="polite">
             <span className="section-label">
@@ -210,7 +297,7 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
               {run.nodes.map((n) => (
                 <div key={n.id}>
                   <span>{n.label}</span>
-                  <code>{step.values[n.id]}</code>
+                  <code>{displayValues[n.id]}</code>
                 </div>
               ))}
             </div>
@@ -260,6 +347,22 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
           {id === "logic" && (
             <>
               <label>
+                Circuito{" "}
+                <select
+                  aria-label="Circuito lógico"
+                  value={settings.logicMode || "gate"}
+                  onChange={(e) =>
+                    configure({
+                      logicMode: e.target.value as Settings["logicMode"],
+                    })
+                  }
+                >
+                  <option value="gate">Porta isolada</option>
+                  <option value="not">NOT usando NAND</option>
+                  <option value="half">Meio somador: XOR + AND</option>
+                </select>
+              </label>
+              <label>
                 Porta lógica{" "}
                 <select
                   value={settings.gate}
@@ -288,18 +391,30 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
             </>
           )}
           {id === "os" && (
-            <label>
-              Quantum{" "}
-              <select
-                aria-label="Quantum"
-                value={settings.quantum}
-                onChange={(e) => configure({ quantum: Number(e.target.value) })}
-              >
-                <option value={1}>1 unidade</option>
-                <option value={2}>2 unidades</option>
-                <option value={3}>3 unidades</option>
-              </select>
-            </label>
+            <>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={!!settings.io}
+                  onChange={(e) => configure({ io: e.target.checked })}
+                />{" "}
+                P1 solicita leitura de disco
+              </label>
+              <label>
+                Quantum{" "}
+                <select
+                  aria-label="Quantum"
+                  value={settings.quantum}
+                  onChange={(e) =>
+                    configure({ quantum: Number(e.target.value) })
+                  }
+                >
+                  <option value={1}>1 unidade</option>
+                  <option value={2}>2 unidades</option>
+                  <option value={3}>3 unidades</option>
+                </select>
+              </label>
+            </>
           )}
           {id === "infra" && (
             <>
@@ -311,6 +426,53 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
                 />{" "}
                 Cache na borda
               </label>
+              <label>
+                Validade do cache (s)
+                <input
+                  aria-label="Validade do cache"
+                  type="number"
+                  min={0}
+                  max={600}
+                  value={settings.ttl ?? 60}
+                  onChange={(e) =>
+                    configure({
+                      ttl: Math.max(
+                        0,
+                        Math.min(600, Math.trunc(Number(e.target.value))),
+                      ),
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Intervalo entre pedidos (s)
+                <input
+                  aria-label="Intervalo entre pedidos"
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={settings.interval ?? 10}
+                  onChange={(e) =>
+                    configure({
+                      interval: Math.max(
+                        1,
+                        Math.min(120, Math.trunc(Number(e.target.value))),
+                      ),
+                    })
+                  }
+                />
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={settings.originVersion === 2}
+                  onChange={(e) =>
+                    configure({ originVersion: e.target.checked ? 2 : 1 })
+                  }
+                />{" "}
+                Origem muda para versão 2 antes do segundo pedido
+              </label>
+
               <label>
                 <input
                   type="checkbox"
@@ -325,6 +487,29 @@ export default function WorkshopLab({ id }: { id: ExtendedLabId }) {
           )}
           {id === "database" && (
             <>
+              <label>
+                Experimento de banco
+                <select
+                  aria-label="Experimento de banco"
+                  value={settings.transaction ? "transaction" : "search"}
+                  onChange={(e) =>
+                    configure({ transaction: e.target.value === "transaction" })
+                  }
+                >
+                  <option value="search">Busca e índice</option>
+                  <option value="transaction">Transferência e COMMIT</option>
+                </select>
+              </label>
+              {settings.transaction && (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!settings.abort}
+                    onChange={(e) => configure({ abort: e.target.checked })}
+                  />{" "}
+                  Falhar antes de confirmar
+                </label>
+              )}
               <label>
                 Chave procurada{" "}
                 <input

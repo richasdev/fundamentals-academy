@@ -1,3 +1,4 @@
+import type { PracticeRequest } from "./content/practice";
 import { sessionDuration } from "./content/sessionDuration";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { animate } from "animejs";
@@ -140,12 +141,16 @@ export default function App() {
     [tab, setTab] = useState("explore"),
     [answer, setAnswer] = useState<number | null>(null),
     [feedback, setFeedback] = useState("");
-  const { completed, complete, replace } = useProgress();
+  const { completed, record, evidence, replace } = useProgress();
+  const [practice, setPractice] = useState<PracticeRequest | null>(null);
+  const [studyFocus, setStudyFocus] = useState(false);
   const [chapter, setChapter] = useState(0);
   const contentRef = useRef<HTMLElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const navigate = (p: Page) => {
     setPage(p);
+    setPractice(null);
+    setStudyFocus(false);
     location.hash = p;
     setQuery("");
     setMenu(false);
@@ -157,6 +162,8 @@ export default function App() {
   useEffect(() => {
     const handler = () => {
       setPage(initialPage());
+      setPractice(null);
+      setStudyFocus(false);
       setAnswer(null);
       setChapter(0);
       setTab("explore");
@@ -182,7 +189,7 @@ export default function App() {
   const duration = sessionDuration(id);
   const exportProgress = () => {
     const url = URL.createObjectURL(
-      new Blob([JSON.stringify({ version: 1, completed }, null, 2)], {
+      new Blob([JSON.stringify({ version: 1, completed, evidence }, null, 2)], {
         type: "application/json",
       }),
     );
@@ -205,7 +212,37 @@ export default function App() {
         )
       )
         throw Error();
-      replace([...new Set(data.completed)] as LabId[]);
+      const restored: typeof evidence = {};
+      if (data.evidence !== undefined) {
+        if (
+          !data.evidence ||
+          typeof data.evidence !== "object" ||
+          Array.isArray(data.evidence)
+        )
+          throw Error();
+        for (const [id, value] of Object.entries(data.evidence)) {
+          const e = value as {
+            concepts: number[];
+            experiment: boolean;
+            challenge: boolean;
+          };
+          if (
+            !(labIds as readonly string[]).includes(id) ||
+            !e ||
+            !Array.isArray(e.concepts) ||
+            !e.concepts.every((c) => [0, 1, 2].includes(c)) ||
+            typeof e.experiment !== "boolean" ||
+            typeof e.challenge !== "boolean"
+          )
+            throw Error();
+          restored[id as LabId] = {
+            concepts: [...new Set(e.concepts)],
+            experiment: e.experiment,
+            challenge: e.challenge,
+          };
+        }
+      }
+      replace([...new Set(data.completed)] as LabId[], restored);
       setFeedback("Progresso importado.");
     } catch {
       setFeedback(
@@ -221,10 +258,17 @@ export default function App() {
   );
   return (
     <>
-      <a className="skip-link" href="#main">
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(e) => {
+          e.preventDefault();
+          contentRef.current?.focus();
+        }}
+      >
         Pular para o conteúdo
       </a>
-      <div className="app-shell">
+      <div className={`app-shell ${studyFocus ? "study-focus" : ""}`}>
         <aside className={`sidebar ${menu ? "open" : ""}`}>
           <a
             href="#map"
@@ -395,7 +439,7 @@ export default function App() {
               {theme === "dark" ? "Escuro" : "Claro"}
             </button>
           </header>
-          <main id="main" ref={contentRef}>
+          <main id="main" ref={contentRef} tabIndex={-1}>
             {isLab ? (
               <>
                 <div
@@ -522,6 +566,13 @@ export default function App() {
                 </details>
                 <div className="lesson-tabs">
                   <button
+                    className="study-focus-toggle"
+                    aria-pressed={studyFocus}
+                    onClick={() => setStudyFocus((v) => !v)}
+                  >
+                    {studyFocus ? "Sair do modo estudo" : "Modo estudo"}
+                  </button>
+                  <button
                     className={tab === "explore" ? "active" : ""}
                     onClick={() => setTab("explore")}
                   >
@@ -541,7 +592,17 @@ export default function App() {
                   </button>
                 </div>
                 <div hidden={tab !== "explore"}>
-                  <Simulator key={id} id={id} />
+                  <Simulator
+                    key={id}
+                    id={id}
+                    request={practice}
+                    active={tab === "explore"}
+                    onBack={(c) => {
+                      setChapter(c);
+                      setTab("understand");
+                    }}
+                    onComplete={() => record(id, "experiment")}
+                  />
                 </div>
                 {tab === "understand" && (
                   <section className="reading-panel">
@@ -571,7 +632,14 @@ export default function App() {
                       key={`${id}-${chapter}`}
                       id={id}
                       chapter={chapter}
-                      onExplore={() => setTab("explore")}
+                      onExplore={(experiment = 0) => {
+                        setPractice({
+                          chapter,
+                          experiment,
+                          serial: Date.now(),
+                        });
+                        setTab("explore");
+                      }}
                     />
                     <div className="chapter-actions">
                       <button
@@ -620,7 +688,7 @@ export default function App() {
                           }
                           onClick={() => {
                             setAnswer(i);
-                            if (i === lesson.correct) complete(id);
+                            if (i === lesson.correct) record(id, "challenge");
                           }}
                         >
                           {a}
@@ -665,11 +733,30 @@ export default function App() {
                     Conceitos cobertos: {lesson.eyebrow.toLowerCase()}.
                   </p>
                 </details>
+                <div
+                  className="learning-evidence"
+                  aria-label="Evidências de aprendizagem"
+                >
+                  <span>Conceitos: {evidence[id]?.concepts.length || 0}/3</span>
+                  <span>
+                    Experimento:{" "}
+                    {evidence[id]?.experiment ? "verificado" : "a executar"}
+                  </span>
+                  <span>
+                    Desafio:{" "}
+                    {evidence[id]?.challenge ? "respondido" : "a responder"}
+                  </span>
+                  <p>
+                    A trilha é concluída após as três checagens das aulas, um
+                    experimento completo e o desafio. Seu progresso anterior foi
+                    preservado.
+                  </p>
+                </div>
                 <div className="track-next">
                   <span>
                     {completed.includes(id)
                       ? "✓ Desafio concluído nesta trilha"
-                      : "Conclua o desafio para registrar seu progresso"}
+                      : "Reúna as evidências de aprendizagem para concluir a trilha"}
                   </span>
                   <button
                     onClick={() =>

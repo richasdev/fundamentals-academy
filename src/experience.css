@@ -1,0 +1,211 @@
+/* The experiment is the primary reading surface; secondary detail stays expandable. */
+.practice-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  font: 12px var(--mono);
+}
+.practice-picker select {
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--tone-ffffff);
+  color: inherit;
+  font: inherit;
+}
+.practice-guide,
+.state-evidence,
+.binary-addition,
+.process-timeline,
+.network-explanation {
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.practice-guide summary,
+.binary-addition summary {
+  cursor: pointer;
+  font: 600 13px/1.7 var(--mono);
+}
+.practice-guide ol {
+  padding-left: 22px;
+  margin: 10px 0;
+}
+.practice-guide li {
+  margin: 8px 0;
+}
+.practice-guide p,
+.state-evidence p,
+.network-explanation p,
+.process-timeline p,
+.binary-addition p {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.practice-guide button,
+.state-evidence button {
+  padding: 7px 0;
+  margin: 8px 16px 0 0;
+  border-bottom: 1px solid var(--line);
+  font: 12px var(--mono);
+}
+.state-evidence h4,
+.process-timeline h4,
+.network-explanation h4 {
+  font-size: 15px;
+  margin: 0 0 6px;
+}
+.state-evidence table,
+.binary-addition table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: fixed;
+}
+.state-evidence th,
+.state-evidence td,
+.binary-addition td,
+.binary-addition th {
+  padding: 8px 5px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+.state-evidence tr[data-changed="true"] td:last-child {
+  color: var(--dev-accent);
+  font-weight: 600;
+}
+.state-evidence code {
+  white-space: normal;
+}
+.binary-addition th:first-child {
+  width: 25%;
+}
+.binary-addition td,
+.binary-addition th {
+  font-size: 10px;
+  padding: 8px 2px;
+}
+.process-timeline ol {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 0;
+  gap: 4px;
+}
+.process-timeline li {
+  display: grid;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--dev-accent);
+  font: 11px/1.6 var(--mono);
+}
+.explore-current-step .status-bar {
+  font-size: 16px;
+}
+.explore-details .flow-readout p,
+.explore-details .workshop-flow p {
+  font-size: 14px;
+  line-height: 1.8;
+}
+.explore-controls .transport button {
+  font-size: 12px;
+  min-height: 40px;
+}
+.explore-visual-column .scene-tools label,
+.scene-camera-toolbar {
+  font-size: 11px;
+}
+.explore-details .workshop-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.explore-details .workshop-settings label {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.explore-details .workshop-settings select,
+.explore-details .workshop-settings input,
+.explore-details .workshop-settings button {
+  font-size: 13px;
+}
+.learning-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid var(--line);
+  font: 12px var(--mono);
+}
+.learning-evidence p {
+  flex-basis: 100%;
+  font:
+    13px/1.7 "Space Grotesk",
+    sans-serif;
+  color: var(--muted);
+}
+.study-focus-toggle {
+  margin-left: auto;
+}
+.study-focus .sidebar,
+.study-focus .topbar,
+.study-focus .lab-navigation,
+.study-focus .lesson-header,
+.study-focus .track-overview,
+.study-focus .session-plan,
+.study-focus .references,
+.study-focus .track-next,
+.study-focus .learning-evidence,
+.study-focus .mobile-progress {
+  display: none;
+}
+.study-focus.app-shell {
+  display: block;
+}
+.study-focus .main-shell {
+  margin: 0;
+  width: 100%;
+}
+.study-focus main {
+  padding: 12px;
+  max-width: none;
+}
+.study-focus .lesson-tabs {
+  margin: 0;
+  padding: 4px 0;
+}
+.study-focus .explore-stage {
+  height: calc(100svh - 175px);
+  min-height: 440px;
+}
+@media (max-width: 820px) {
+  .explore-current-step .status-bar {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .explore-controls .transport button {
+    font-size: 11px;
+  }
+  .scene-camera-toolbar {
+    font-size: 10px;
+  }
+  .practice-picker {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+  .practice-picker select {
+    width: 100%;
+  }
+  .study-focus .explore-stage {
+    height: calc(100svh - 200px);
+    min-height: 520px;
+  }
+}

@@ -1,8 +1,10 @@
+import { GuideSlot, PracticeGuide } from "./PracticeGuide";
 import {
   createContext,
   useState,
   useEffect,
   useRef,
+  useContext,
   type ReactNode,
 } from "react";
 
@@ -21,6 +23,7 @@ export default function ExploreStage({
   children: ReactNode;
   controls: ReactNode;
 }) {
+  const guide = useContext(GuideSlot);
   const [readout, setReadout] = useState<HTMLDivElement | null>(null);
   const details = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -42,6 +45,7 @@ export default function ExploreStage({
             aria-label="Detalhes e parâmetros do experimento"
             tabIndex={0}
           >
+            {guide && <PracticeGuide id={guide.id} onBack={guide.onBack} />}
             <div ref={setReadout} />
             {children}
           </div>

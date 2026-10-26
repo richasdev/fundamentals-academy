@@ -1,6 +1,19 @@
+import { memoryFlow } from "../simulators/flows";
+import StateEvidence from "./StateEvidence";
+import { PracticeContext, SimulationActive, GuideSlot } from "./PracticeGuide";
+import { preparePractice, type PracticeRequest } from "../content/practice";
+import { studySessions } from "../content/studySessions";
+import { byteAddition } from "../simulators/presentation";
 import ExploreStage from "./ExploreStage";
 import WorkshopLab from "./WorkshopLab";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useContext,
+} from "react";
 import {
   Play,
   Pause,
@@ -13,6 +26,8 @@ import {
 import {
   cpuModel,
   memoryAction,
+  memorySpace,
+  networkEndpoints,
   initialMemory,
   networkModel,
   networkLabels,
@@ -24,6 +39,7 @@ import {
 import type { LabId, ExtendedLabId } from "../content/lessons";
 const Hardware3D = lazy(() => import("./Hardware3D"));
 function useEngine<S>(model: Model<S>, three = true) {
+  const active = useContext(SimulationActive);
   const [history, setHistory] = useState<S[]>(() => [model.initial()]);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -43,7 +59,12 @@ function useEngine<S>(model: Model<S>, three = true) {
     setPlaying(false);
   }, [model]);
   useEffect(() => {
-    if (!playing || done || (three && history.length > 1 && delivery !== state))
+    if (
+      !active ||
+      !playing ||
+      done ||
+      (three && history.length > 1 && delivery !== state)
+    )
       return;
     // Let the camera settle on the receiver before advancing the engine.
     const timer = window.setTimeout(
@@ -54,9 +75,25 @@ function useEngine<S>(model: Model<S>, three = true) {
       three && history.length > 1 ? 650 + 400 / speed : 1200 / speed,
     );
     return () => clearTimeout(timer);
-  }, [playing, done, model, speed, three, history.length, state, delivery]);
+  }, [
+    playing,
+    done,
+    model,
+    speed,
+    three,
+    history.length,
+    state,
+    delivery,
+    active,
+  ]);
   return {
     state,
+    before: history[history.length - 2] || state,
+    presented:
+      !three || delivery === state || history.length === 1
+        ? state
+        : history[history.length - 2] || state,
+    pending: three && delivery !== state && history.length > 1,
     onArrival: () => setDelivery(state),
     onTransfer: () => setDelivery(null),
     history,
@@ -64,7 +101,7 @@ function useEngine<S>(model: Model<S>, three = true) {
     speed,
     done,
     step,
-    motionPaused,
+    motionPaused: motionPaused || !active,
     toggle: () => {
       setMotionPaused(playing);
       setPlaying(!playing);
@@ -288,13 +325,33 @@ function CpuDiagram({ s }: { s: CpuState }) {
     </svg>
   );
 }
-function CpuLab() {
+function CpuLab({ onComplete }: { onComplete?: () => void }) {
+  const practice = useContext(PracticeContext);
   const [a, setA] = useState(5),
     [b, setB] = useState(3);
   const model = useMemo(() => cpuModel(a, b), [a, b]);
   const [three, setThree] = useState(true);
   const e = useEngine(model, three);
   const s = e.state;
+  const shown = e.presented;
+  useEffect(() => {
+    if (practice) {
+      const p = preparePractice("cpu", practice.chapter, practice.experiment);
+      setA(p.cpuA ?? 5);
+      setB(p.cpuB ?? 3);
+      e.reset();
+    }
+  }, [practice]);
+  useEffect(() => {
+    if (e.done && !e.pending) onComplete?.();
+  }, [e.done, e.pending, onComplete]);
+  const cpuValues = (s: CpuState) => ({
+    PC: String(s.pc),
+    IR: s.ir?.op || "—",
+    ACC: String(s.acc),
+    "RAM[10]": String(s.ram[10]),
+  });
+  const sum = byteAddition(a, b);
   const active = s.cycles === 0 ? -1 : (s.phase + 2) % 3;
   return (
     <>
@@ -316,6 +373,7 @@ function CpuLab() {
                 <Hardware3D
                   kind="cpu"
                   state={s}
+                  previousState={e.before}
                   speed={e.speed}
                   paused={e.motionPaused}
                   onArrival={e.onArrival}
@@ -342,19 +400,68 @@ function CpuLab() {
             <span className="status-index">
               {String(s.cycles).padStart(2, "0")}
             </span>
-            {s.log}
-            <span className="cycle-count">{s.cycles} ciclos</span>
+            {e.pending
+              ? "Transferência em curso. Os registradores ainda mostram o estado anterior."
+              : s.log}
+            <span className="cycle-count">
+              {s.cycles} microetapas didáticas
+            </span>
           </div>
         }
         controls={<Controls engine={e} />}
       >
+        <StateEvidence
+          values={cpuValues(shown)}
+          before={cpuValues(e.before)}
+          pending={e.pending}
+        />
+        <details className="binary-addition">
+          <summary>
+            Soma de oito bits: {a} + {b}
+          </summary>
+          <p>
+            Leia da direita para a esquerda. Cada coluna recebe os dois bits e o
+            transporte da coluna anterior.
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Bit</th>
+                {sum.columns.map((c) => (
+                  <th key={c.bit}>{c.bit}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(["left", "right", "carryIn", "result"] as const).map(
+                (field, i) => (
+                  <tr key={field}>
+                    <th>{["A", "B", "Transporte recebido", "Saída"][i]}</th>
+                    {sum.columns.map((c) => (
+                      <td key={c.bit}>{c[field]}</td>
+                    ))}
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+          <p>
+            {sum.total} = {sum.carry} × 256 + {sum.result}.{" "}
+            {sum.carry
+              ? "O nono bit fica fora do acumulador de oito bits."
+              : "A soma cabe nos oito bits."}
+          </p>
+        </details>
         <aside className="code-panel">
           <div className="panel-label">
             PROGRAMA <span>assembly didático</span>
           </div>
           <div className="code-lines">
             {program.map((p, i) => (
-              <div className={s.ir && s.pc - 1 === i ? "current" : ""} key={i}>
+              <div
+                className={shown.ir && shown.pc - 1 === i ? "current" : ""}
+                key={i}
+              >
                 <span>{String(i + 1).padStart(2, "0")}</span>
                 <code>
                   <b>{p.op}</b>
@@ -374,7 +481,12 @@ function CpuLab() {
                 max="255"
                 value={a}
                 onChange={(ev) =>
-                  setA(Math.min(255, Math.max(0, Number(ev.target.value))))
+                  setA(
+                    Math.min(
+                      255,
+                      Math.max(0, Math.trunc(Number(ev.target.value))),
+                    ),
+                  )
                 }
               />
             </label>
@@ -386,7 +498,12 @@ function CpuLab() {
                 max="255"
                 value={b}
                 onChange={(ev) =>
-                  setB(Math.min(255, Math.max(0, Number(ev.target.value))))
+                  setB(
+                    Math.min(
+                      255,
+                      Math.max(0, Math.trunc(Number(ev.target.value))),
+                    ),
+                  )
                 }
               />
             </label>
@@ -394,8 +511,8 @@ function CpuLab() {
           </div>
           <div className="register-result">
             <span>ACUMULADOR</span>
-            <strong>{s.acc.toString().padStart(2, "0")}</strong>
-            <small>{s.acc.toString(2).padStart(8, "0")}₂</small>
+            <strong>{shown.acc.toString().padStart(2, "0")}</strong>
+            <small>{shown.acc.toString(2).padStart(8, "0")}₂</small>
           </div>
         </aside>
       </ExploreStage>
@@ -412,12 +529,36 @@ function CpuLab() {
     </>
   );
 }
-function MemoryLab() {
+function MemoryLab({ onComplete }: { onComplete?: () => void }) {
+  const practice = useContext(PracticeContext);
+  const [delivery, setDelivery] = useState<ReturnType<
+    typeof initialMemory
+  > | null>(null);
+  const [freeAddress, setFreeAddress] = useState("");
   const [three, setThree] = useState(true);
   const [history, setHistory] = useState([initialMemory()]);
   const [size, setSize] = useState(4);
   const s = history[history.length - 1];
-  const occupied = s.blocks.reduce((n, b) => n + b.size, 0) + s.stack.length;
+  const before = history[history.length - 2] || s;
+  const pending =
+    three && !!memoryFlow(s) && delivery !== s && history.length > 1;
+  const shown = pending ? before : s;
+  const space = memorySpace(shown);
+  useEffect(() => {
+    if (practice) {
+      setSize(
+        preparePractice("memory", practice.chapter, practice.experiment)
+          .memorySize ?? 4,
+      );
+      setHistory([initialMemory()]);
+      setFreeAddress("");
+    }
+  }, [practice]);
+  useEffect(() => {
+    if (s.operations >= 3 && (!three || delivery === s)) onComplete?.();
+  }, [s, delivery, three, onComplete]);
+  const occupied =
+    shown.blocks.reduce((n, b) => n + b.size, 0) + shown.stack.length;
   const act = (a: "push" | "pop" | "alloc" | "free") =>
     setHistory((h) => [...h, memoryAction(h[h.length - 1], a, size)]);
   return (
@@ -436,7 +577,13 @@ function MemoryLab() {
           <>
             {three && (
               <Suspense fallback={<p>Preparando a bancada…</p>}>
-                <Hardware3D kind="memory" state={s} />
+                <Hardware3D
+                  kind="memory"
+                  state={s}
+                  previousState={before}
+                  onArrival={() => setDelivery(s)}
+                  onTransfer={() => setDelivery(null)}
+                />
               </Suspense>
             )}
             <div className="memory-grid" hidden={three}>
@@ -463,7 +610,9 @@ function MemoryLab() {
         }
         explanation={
           <div className="status-bar" role="status">
-            {s.log}
+            {pending
+              ? "A operação está em trânsito. Confira a reserva ou o valor após a entrega."
+              : s.log}
           </div>
         }
         controls={
@@ -485,6 +634,18 @@ function MemoryLab() {
           </div>
         }
       >
+        <StateEvidence
+          values={{
+            "Bytes livres": String(space.free),
+            "Maior intervalo livre": String(space.largest),
+            Stack: shown.stack.join(", ") || "vazia",
+            Blocos:
+              shown.blocks
+                .map((b) => `0x${b.address.toString(16)}: ${b.size} bytes`)
+                .join("; ") || "nenhum",
+          }}
+          pending={pending}
+        />
         <div className="memory-content">
           <div className="memory-legend">
             <span>
@@ -502,15 +663,62 @@ function MemoryLab() {
                 aria-label="Tamanho ou valor"
                 type="number"
                 min="1"
-                max="8"
+                max="32"
                 value={size}
                 onChange={(e) =>
-                  setSize(Math.max(1, Math.min(8, Number(e.target.value))))
+                  setSize(
+                    Math.max(
+                      1,
+                      Math.min(32, Math.trunc(Number(e.target.value))),
+                    ),
+                  )
                 }
               />
             </label>
             <button onClick={() => act("alloc")}>malloc({size})</button>
             <button onClick={() => act("free")}>free(último)</button>
+            <label>
+              Bloco para liberar
+              <select
+                aria-label="Bloco para liberar"
+                value={
+                  s.blocks.some((b) => String(b.address) === freeAddress)
+                    ? freeAddress
+                    : ""
+                }
+                onChange={(e) => setFreeAddress(e.target.value)}
+              >
+                <option value="">Selecione um endereço</option>
+                {s.blocks.map((b) => (
+                  <option key={b.address} value={b.address}>
+                    0x{b.address.toString(16)} · {b.size} bytes
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              disabled={
+                !s.blocks.some((b) => String(b.address) === freeAddress)
+              }
+              onClick={() =>
+                setHistory((h) => [
+                  ...h,
+                  memoryAction(
+                    h[h.length - 1],
+                    "free",
+                    size,
+                    Number(freeAddress),
+                  ),
+                ])
+              }
+            >
+              Liberar bloco selecionado
+            </button>
+            <p>
+              Espaço total e maior intervalo são medidas diferentes. Para criar
+              fragmentação, reserve quatro blocos de 8 bytes, libere 0x0 e 0x10
+              e tente reservar 12.
+            </p>
             <button onClick={() => act("push")}>PUSH {size}</button>
             <button onClick={() => act("pop")}>POP</button>
           </div>
@@ -525,7 +733,8 @@ function MemoryLab() {
     </>
   );
 }
-function NetworkLab() {
+function NetworkLab({ onComplete }: { onComplete?: () => void }) {
+  const practice = useContext(PracticeContext);
   const [three, setThree] = useState(true);
   const [latency, setLatency] = useState(40),
     [cached, setCached] = useState(false),
@@ -536,6 +745,24 @@ function NetworkLab() {
   );
   const e = useEngine<NetworkState>(model, three);
   const s = e.state;
+  const shown = e.presented;
+  const endpoint = networkEndpoints(shown);
+  useEffect(() => {
+    if (practice) {
+      const p = preparePractice(
+        "network",
+        practice.chapter,
+        practice.experiment,
+      );
+      setLatency(p.latency ?? 40);
+      setCached(p.dnsCached ?? false);
+      setLoss(p.loss ?? false);
+      e.reset();
+    }
+  }, [practice]);
+  useEffect(() => {
+    if (e.done && !e.pending) onComplete?.();
+  }, [e.done, e.pending, onComplete]);
   return (
     <>
       <div className="lab-top">
@@ -555,6 +782,7 @@ function NetworkLab() {
                 <Hardware3D
                   kind="network"
                   state={s}
+                  previousState={e.before}
                   speed={e.speed}
                   paused={e.motionPaused}
                   onArrival={e.onArrival}
@@ -584,7 +812,9 @@ function NetworkLab() {
         }
         explanation={
           <div className="status-bar" role="status">
-            {s.log}
+            {e.pending
+              ? "Mensagem em trânsito. O estado das pontas muda após a chegada."
+              : s.log}
             <span className="cycle-count">
               {s.status} · {s.elapsed} ms
             </span>
@@ -592,6 +822,28 @@ function NetworkLab() {
         }
         controls={<Controls engine={e} />}
       >
+        <StateEvidence
+          values={{
+            Cliente: endpoint.cliente,
+            Servidor: endpoint.servidor,
+            Camada: endpoint.camada,
+            "Tempo simulado": `${shown.elapsed} ms`,
+          }}
+          pending={e.pending}
+        />
+        <section className="network-explanation">
+          <h4>Números do handshake</h4>
+          <p>
+            SYN seq=100 consome uma posição: a confirmação é ack=101. O SYN do
+            servidor usa seq=500 e é confirmado por ack=501. Neste modelo, o
+            último ACK carrega GET junto.
+          </p>
+          <p>
+            DNS descobre o IP; TCP estabelece o fluxo; HTTP organiza a
+            requisição e a resposta. A velocidade da bolinha altera a leitura
+            visual, preservando o tempo simulado.
+          </p>
+        </section>
         <div className="network-content">
           <div className="network-steps">
             {networkLabels.map((l, i) => (
@@ -653,18 +905,71 @@ function NetworkLab() {
     </>
   );
 }
-export default function Simulator({ id }: { id: LabId }) {
+export default function Simulator({
+  id,
+  request,
+  active = true,
+  onBack,
+  onComplete,
+}: {
+  id: LabId;
+  request?: PracticeRequest | null;
+  active?: boolean;
+  onBack?: (chapter: number) => void;
+  onComplete?: () => void;
+}) {
+  const [practice, setPractice] = useState<PracticeRequest | null>(
+    request || null,
+  );
+  useEffect(() => setPractice(request || null), [request]);
   return (
-    <section className="simulator" aria-label="Laboratório interativo">
-      {id === "cpu" ? (
-        <CpuLab />
-      ) : id === "memory" ? (
-        <MemoryLab />
-      ) : id === "network" ? (
-        <NetworkLab />
-      ) : (
-        <WorkshopLab key={id} id={id as ExtendedLabId} />
-      )}
-    </section>
+    <SimulationActive.Provider value={active}>
+      <PracticeContext.Provider value={practice}>
+        <GuideSlot.Provider value={{ id, onBack }}>
+          <section className="simulator" aria-label="Laboratório interativo">
+            <label className="practice-picker">
+              Roteiro da experiência{" "}
+              <select
+                aria-label="Roteiro da experiência"
+                value={
+                  practice ? `${practice.chapter}-${practice.experiment}` : ""
+                }
+                onChange={(e) => {
+                  if (!e.target.value) setPractice(null);
+                  else {
+                    const [chapter, experiment] = e.target.value
+                      .split("-")
+                      .map(Number);
+                    setPractice({ chapter, experiment, serial: Date.now() });
+                  }
+                }}
+              >
+                <option value="">Exploração livre</option>
+                {studySessions[id].modules.flatMap((m, c) =>
+                  m.experiments.map((e, i) => (
+                    <option key={`${c}-${i}`} value={`${c}-${i}`}>
+                      {c + 1}.{i + 1} · {e.title}
+                    </option>
+                  )),
+                )}
+              </select>
+            </label>
+            {id === "cpu" ? (
+              <CpuLab onComplete={onComplete} />
+            ) : id === "memory" ? (
+              <MemoryLab onComplete={onComplete} />
+            ) : id === "network" ? (
+              <NetworkLab onComplete={onComplete} />
+            ) : (
+              <WorkshopLab
+                key={id}
+                id={id as ExtendedLabId}
+                onComplete={onComplete}
+              />
+            )}
+          </section>
+        </GuideSlot.Provider>
+      </PracticeContext.Provider>
+    </SimulationActive.Provider>
   );
 }

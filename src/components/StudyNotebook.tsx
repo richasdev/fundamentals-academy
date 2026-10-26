@@ -36,7 +36,7 @@ export default function StudyNotebook({
 }: {
   id: LabId;
   chapter: number;
-  onExplore?: () => void;
+  onExplore?: (experiment?: number) => void;
 }) {
   const key = `fundamentals-notebook-v1-${id}-${chapter}`;
   const [notes, setNotes] = useState<Notes>(() => load(key)),
@@ -86,6 +86,11 @@ export default function StudyNotebook({
                 <li key={text}>{text}</li>
               ))}
             </ol>
+            {onExplore && (
+              <button className="open-practice" onClick={() => onExplore(i)}>
+                Preparar esta investigação na bancada →
+              </button>
+            )}
             <details>
               <summary>Resultado esperado e limites</summary>
               <p>{experiment.expected}</p>
@@ -107,7 +112,7 @@ export default function StudyNotebook({
           </article>
         ))}
         {onExplore && (
-          <button className="open-practice" onClick={onExplore}>
+          <button className="open-practice" onClick={() => onExplore(0)}>
             Abrir bancada de experimentos →
           </button>
         )}

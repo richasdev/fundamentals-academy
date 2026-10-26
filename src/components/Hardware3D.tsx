@@ -44,6 +44,7 @@ type Props = (
 ) & {
   speed?: number;
   paused?: boolean;
+  previousState?: CpuState | MemoryState | NetworkState;
   onArrival?: () => void;
   onTransfer?: () => void;
 };
@@ -66,7 +67,7 @@ export class SceneBoundary extends Component<
     );
   }
 }
-function Label({
+export function Label({
   label,
   sub,
   selected,
@@ -289,7 +290,7 @@ function HardwareCamera({
   const shot = hardwareCameraShot(
     following ? flow : null,
     arrived,
-    size.width / size.height,
+    size.width / Math.max(1, size.height),
     rotation,
   );
   return (
@@ -319,7 +320,7 @@ export default function Hardware3D(props: Props) {
     [rotation, setRotation] = useState(0),
     [cameraKey, setCameraKey] = useState(0);
   const choose = (text: string) => setSelected(text);
-  const s = props.state;
+  const rawState = props.state;
   const gap = 1 + spread * 0.6;
   const [replay, setReplay] = useState(0);
   const [layers, setLayers] = useState(0);
@@ -330,11 +331,15 @@ export default function Hardware3D(props: Props) {
         : props.kind === "memory"
           ? memoryFlow(props.state, gap)
           : networkFlow(props.state, gap),
-    [props.kind, s, gap, spread],
+    [props.kind, rawState, gap, spread],
   );
+  const [visit, setVisit] = useState({ state: rawState, serial: 0 });
+  if (visit.state !== rawState)
+    setVisit({ state: rawState, serial: visit.serial + 1 });
   const [arrivalKey, setArrivalKey] = useState("");
-  const flowKey = `${props.kind}-${flow?.id}-${flow?.payload}-${replay}`;
+  const flowKey = `${props.kind}-${flow?.id}-${flow?.payload}-${visit.serial}-${replay}`;
   const arrived = arrivalKey === flowKey;
+  const s = !flow || arrived ? rawState : props.previousState || rawState;
   useEffect(() => {
     props.onTransfer?.();
   }, [flowKey]);
@@ -355,7 +360,7 @@ export default function Hardware3D(props: Props) {
   const anatomy = modelAnatomy[anatomyKind];
   const receiving = (id: string) =>
     arrived && !flow?.lost && flow?.receiver === id;
-  useEffect(() => setSelected(""), [s]);
+  useEffect(() => setSelected(""), [rawState]);
   const inspectOptions =
     props.kind === "cpu"
       ? [

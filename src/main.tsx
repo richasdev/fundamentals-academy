@@ -7,6 +7,7 @@ import "./tracks.css";
 import "./learning.css";
 import "./lesson-player.css";
 import "./explore-player.css";
+import "./experience.css";
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

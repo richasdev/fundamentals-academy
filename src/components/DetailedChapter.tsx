@@ -10,7 +10,7 @@ export default function DetailedChapter({
 }: {
   id: LabId;
   chapter: number;
-  onExplore?: () => void;
+  onExplore?: (experiment?: number) => void;
 }) {
   const detail = chapterDetails[id][chapter];
   return (

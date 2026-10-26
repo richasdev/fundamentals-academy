@@ -1,3 +1,4 @@
+import { useProgress } from "../store";
 import SynchronizedLesson from "./SynchronizedLesson";
 import type { LabId } from "../content/lessons";
 import { useState } from "react";
@@ -61,7 +62,11 @@ export default function GuidedExplanation({
                     : "selected-review"
                   : ""
               }
-              onClick={() => setAnswer(i)}
+              onClick={() => {
+                setAnswer(i);
+                if (i === guide.correct)
+                  useProgress.getState().record(id, "concept", chapter);
+              }}
             >
               <span aria-hidden="true">
                 {answer === i ? (i === guide.correct ? "✓" : "↳") : i + 1}

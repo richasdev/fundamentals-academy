@@ -1,3 +1,4 @@
+import ConceptModel, { conceptAnatomy } from "./ConceptModel";
 import { useRef, useState, type ReactNode } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import {
@@ -71,6 +72,7 @@ export default function Workshop3D({
   controlledProgress,
   autoCamera = false,
   compact = false,
+  edges = [],
 }: {
   nodes: WorkshopNode[];
   step: WorkshopStep;
@@ -83,6 +85,7 @@ export default function Workshop3D({
   controlledProgress?: number;
   autoCamera?: boolean;
   compact?: boolean;
+  edges?: [string, string][];
 }) {
   const { theme } = useAppearance();
   const [rotation, setRotation] = useState(0),
@@ -92,7 +95,9 @@ export default function Workshop3D({
   const [viewNode, setViewNode] = useState("");
   const [explode, setExplode] = useState(0);
   const selectedNode = nodes.find((n) => n.id === selected);
-  const anatomy = selectedNode ? modelAnatomy[nodeModel(selectedNode)] : null;
+  const anatomy = selectedNode
+    ? conceptAnatomy(selectedNode) || modelAnatomy[nodeModel(selectedNode)]
+    : null;
   const [following, setFollowing] = useState(autoCamera);
   const controls = useRef<OrbitHandle>(null),
     cancel = useRef<(() => void) | null>(null);
@@ -205,47 +210,62 @@ export default function Workshop3D({
               <BoardDetails network={false} memory={false} />
               {spatialNodes.map((n, i) => (
                 <group key={n.id}>
-                  <Part
-                    position={[
-                      n.position[0],
-                      n.kind === "server" ? 0.65 : 0,
-                      n.position[2],
-                    ]}
-                    size={
-                      n.kind === "server"
-                        ? [1.25, 2, 1.25]
-                        : n.kind === "cpu"
-                          ? [1.6, 0.5, 1.4]
-                          : [1.5, 0.22, 1]
-                    }
-                    modelKind={nodeModel(n)}
-                    explode={selected === n.id ? explode : 0}
-                    active={
-                      !arrived &&
-                      !step.flow?.lost &&
-                      (focus.includes(n.id) ||
-                        step.flow?.source === n.label ||
-                        step.flow?.receiver === n.id)
-                    }
-                    paused={paused}
-                    label={n.label}
-                    sub={(step.values[n.id] || "—").slice(0, 22)}
-                    color={
-                      ["#547caa", "#6e9e62", "#9774a6", "#b19b59", "#548d8f"][
-                        i % 5
-                      ]
-                    }
-                    receiving={
-                      arrived &&
-                      !step.flow?.lost &&
-                      step.flow?.receiver === n.id
-                    }
-                    focused={
-                      focus.includes(n.id) || step.flow?.source === n.label
-                    }
-                    selected={selected === n.id}
-                    onSelect={() => setSelected(n.id)}
-                  />
+                  {n.visual ? (
+                    <ConceptModel
+                      node={n}
+                      explode={selected === n.id ? explode : 0}
+                      value={step.values[n.id] || "—"}
+                      selected={selected === n.id}
+                      receiving={
+                        arrived &&
+                        step.flow?.receiver === n.id &&
+                        !step.flow.lost
+                      }
+                      onSelect={() => setSelected(n.id)}
+                    />
+                  ) : (
+                    <Part
+                      position={[
+                        n.position[0],
+                        n.kind === "server" ? 0.65 : 0,
+                        n.position[2],
+                      ]}
+                      size={
+                        n.kind === "server"
+                          ? [1.25, 2, 1.25]
+                          : n.kind === "cpu"
+                            ? [1.6, 0.5, 1.4]
+                            : [1.5, 0.22, 1]
+                      }
+                      modelKind={nodeModel(n)}
+                      explode={selected === n.id ? explode : 0}
+                      active={
+                        !arrived &&
+                        !step.flow?.lost &&
+                        (focus.includes(n.id) ||
+                          step.flow?.source === n.label ||
+                          step.flow?.receiver === n.id)
+                      }
+                      paused={paused}
+                      label={n.label}
+                      sub={(step.values[n.id] || "—").slice(0, 22)}
+                      color={
+                        ["#547caa", "#6e9e62", "#9774a6", "#b19b59", "#548d8f"][
+                          i % 5
+                        ]
+                      }
+                      receiving={
+                        arrived &&
+                        !step.flow?.lost &&
+                        step.flow?.receiver === n.id
+                      }
+                      focused={
+                        focus.includes(n.id) || step.flow?.source === n.label
+                      }
+                      selected={selected === n.id}
+                      onSelect={() => setSelected(n.id)}
+                    />
+                  )}
                   {nodeModel(n) === "laptop" && (
                     <Part
                       position={[n.position[0], 0.65, n.position[2] - 0.45]}
@@ -257,23 +277,23 @@ export default function Workshop3D({
                       selected={selected === n.id}
                     />
                   )}
-
-                  {i > 0 && (
-                    <Line
-                      points={[
-                        [
-                          spatialNodes[0].position[0],
-                          -0.3,
-                          spatialNodes[0].position[2],
-                        ],
-                        [n.position[0], -0.3, n.position[2]],
-                      ]}
-                      color="#718b7e"
-                      lineWidth={1}
-                    />
-                  )}
                 </group>
               ))}
+              {edges.map(([from, to]) => {
+                const a = spatialNodes.find((n) => n.id === from),
+                  b = spatialNodes.find((n) => n.id === to);
+                return a && b ? (
+                  <Line
+                    key={`${from}-${to}`}
+                    points={[
+                      [a.position[0], 0.05, a.position[2]],
+                      [b.position[0], 0.05, b.position[2]],
+                    ]}
+                    color="#718b7e"
+                    lineWidth={1}
+                  />
+                ) : null;
+              })}
               {flow && (
                 <StableFlow
                   key={`${replay}-${flowSignature}`}
